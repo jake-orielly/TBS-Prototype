@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+canvas {
+    border: 1px solid #d3d3d3;
+    background-color: #f1f1f1;
+}
+</style>
+</head>
+<body onload="startGame()" oncontextmenu="return false">
+<script>
+
+var spaces = [];
+var boardX = 896;
+var boardY = 896;
+var playerMovement = 3;
+var phase = 0;
+var board = [];
+var moveableSpaces = [];
+var moveableGrid = [];
+var spaceOffset = [[1,0],[-1,0],[0,1],[0,-1]];
+var newMoveable;
+var currX;
+var currY;
+var path = [];
+var pathX;
+var pathY;
+var playerUnits = [];
+var playerHP = [];
+var moves = [];
+var empty = 0;
+var spaceSize = 64;
+var boardRows = 14;
+var boardCols = 14;
+var selectedUnit;
+var entityLayer = [];
+
+var terrainDefault = ["grass.png", "trees.png", "mountain.png"];
+var terrainSelected = ["grassSelected.png", "treesSelected.png", "mountainSelected.png"];
+var terrainMoveable = ["grassMoveable.png", "treesMoveable.png", "mountainMoveable.png"];
+var terrainEnemy = ["grassEnemy.png","treesEnemy.png","mountainEnemy.png"];
+var terrainCost = [1,2,3];
+var terrain = [terrainDefault, terrainSelected, terrainMoveable, terrainEnemy];
+
+
+var infantry = {attack: 3, defense: 3, movement: 3};
+var heavyInfantry = {attack: 4, defense: 4, movement: 2};
+var units = [infantry. heavyInfantry];
+
+function startGame() {
+	mapTerrain();
+	
+	for (var i = 0; i < boardRows; i++) {
+		spaces[i] = [];
+		entityLayer[i] = [];
+		for (var j = 0; j < boardCols; j++) {
+				spaces[i][j] = generateSpace(i,j);
+				entityLayer[i][j] = -1;
+		}
+	}
+	
+	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
+	newPlayerUnit(50, 50, "roman.png", 2, 2, 0);
+	
+	gameArea.start();
+}
+
+function newPlayerUnit (sizeX, sizeY, img, xCord, yCord, unit) {
+	playerUnits[playerUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord) + ((spaceSize-sizeX)/2), toPixel(yCord) + ((spaceSize-sizeY)/2), "player", units[unit]);
+	playerHP[playerHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord) + 25 + ((64-50)/2), toPixel(yCord) + 50 + ((64-50)/2), "text", "10");
+	entityLayer[xCord][yCord] = playerUnits.length-1;
+}
+
+function mapTerrain() {
+	for (var i = 0; i < boardRows; i++) {
+		board[i] = [];
+		for (var j = 0; j < boardCols; j++) {
+			board[i][j] = 0;
+		}
+	}
+	
+	board[3][3] = 1;
+	board[3][4] = 1;
+	board[4][3] = 1;
+	board[4][4] = 1;
+	board[4][5] = 1;
+	
+	board[8][8] = 1;
+	board[8][9] = 1;
+	board[9][8] = 1;
+	
+	board[5][0] = 2;
+	board[5][1] = 2;
+	board[5][2] = 2;
+	board[5][3] = 2;
+	
+}
+
+function generateSpace (x,y) {
+	var image = getImage(x,y,0);
+	var space = new component(64, 64, image, toPixel(x), toPixel(y), "" + x + "," + y);
+	return space;
+}
+
+var gameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = boardX;
+        this.canvas.height = boardY;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+		this.interval = setInterval(updateGameArea, 20);
+		window.addEventListener("mouseup", clicked);
+		
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+}
+
+function component(width, height, color, x, y, type, unit) {
+	this.type = type;
+    this.width = width;
+    this.height = height;
+	this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;
+	this.image = new Image();
+	this.image.src = color;
+    this.moveable = false;
+	
+    this.update = function() {
+		ctx = gameArea.context;
+		
+		if (this.type == "text") {
+			ctx.font = this.width + " " + this.height;
+			ctx.fillStyle = color;
+			ctx.fillText(this.text, this.x, this.y);
+			this.text = unit;
+		}
+		
+		else {
+			ctx.drawImage(this.image, 
+			this.x, 
+			this.y,
+			this.width, this.height);
+			this.stats = unit; 
+		}
+    }
+	
+    this.newPos = function() {
+		this.x += this.speedX;
+		this.y += this.speedY;        
+	}
+} 
+
+function updateGameArea() {
+    gameArea.clear();
+	
+	for (var i = 0; i < boardRows; i++) {
+		for (var j = 0; j < boardCols; j++) {
+			spaces[i][j].update();
+		}
+	}
+	
+	if (path != []) {
+		for (var i = 0; i < path.length; i++) {
+			path[i].update();
+		}
+	}
+
+	for (var i = 0; i < playerUnits.length; i++) {
+			playerUnits[i].update();
+	}
+	
+	for (var i = 0; i < playerHP.length; i++) {
+			playerHP[i].update();
+	}
+}
+
+function clicked(event) {
+	var x = parseInt(event.clientX/64);
+	var y = parseInt(event.clientY/64);
+		
+	if (phase == 0 && entityLayer[x][y] > -1) {
+		spaces[x][y].image.src = getImage(x,y,1);
+		highlightMoveable(x,y);
+		selectedUnit = entityLayer[x][y];
+		phase++;
+	}
+
+	else if (entityLayer[x][y] > -1) {
+		clearMoveable();
+		moves = [];
+		path = [];
+		phase = 0
+		clicked(event);
+	}
+	
+	else if (phase == 1) {
+		if (spaces[x][y].moveable) {
+			makeMoves(x,y,playerUnits[selectedUnit])
+			phase++;
+		}
+	}
+	
+	else if (phase == 2) {
+		if (moves[0][0] == x && moves[0][1] == y){
+			entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+			for (var i = moves.length-1; i >= 0; i--) {
+				executeMoves(moves[i][0],moves[i][1],playerUnits[selectedUnit]);
+			}
+			entityLayer[x][y] = selectedUnit;
+			clearMoveable();
+			moves = [];
+			path = [];
+			phase = 0;
+		}
+		else if (spaces[x][y].moveable) {
+			phase = 1;
+			moves = [];
+			path = [];
+			clicked(event);
+		}
+	}
+}
+
+function makeMoves (x,y,given) {
+	var current;
+	var selected = [0,0]
+	moves.push([x,y]);
+	while (!(arrayCompare(moves[moves.length-1],[Math.trunc(given.x/64),Math.trunc(given.y/64)]))) { //while the last position in the list of moves != the starting position
+		current = -1;
+		
+		for (var i = 0; i < spaceOffset.length; i++) {
+			if (moves[moves.length-1][0]+spaceOffset[i][0] >= 0 && moves[moves.length-1][1]+spaceOffset[i][1] >=0 && //make sure we don't check spaces off the board (@ array[-1])
+				moveableGrid[moves[moves.length-1][0]+spaceOffset[i][0]][moves[moves.length-1][1]+spaceOffset[i][1]] > current) {
+				current = moveableGrid[moves[moves.length-1][0]+spaceOffset[i][0]][moves[moves.length-1][1]+spaceOffset[i][1]];
+				selected = spaceOffset[i];
+			}
+		}
+		
+		moves.push([moves[moves.length-1][0]+selected[0],moves[moves.length-1][1]+selected[1]]);
+	}
+	
+	for (var i = 0; i < moves.length-1; i++) {
+		drawPath(i);
+	}
+}
+
+function arrayCompare (array1, array2) {
+	if (!array1 || !array2) {
+		return false;
+	}
+	
+	if (array1.length != array2.length) {
+		return false
+	}
+	
+	for (var i = 0; i < array1.length; i++) {
+		if (array1[i] instanceof Array && array2[i] instanceof Array) {
+			if (!(arrayCompare(array1[i],array2[i]))) {
+				return false;
+			}
+		}
+		
+		else if (!(array1[i] == array2[i])) {
+			return false;
+		}
+	}
+	
+	return true;
+}
+
+function drawPath(i) {
+	if (moves[i][1] != moves[i+1][1]) {
+		path[i] = new component(10, 64, "verticalLine.png", (64-10)/2 + moves[i][0]*64, moves[i][1]*64, "path");
+	}
+	else {
+		path[i] = new component(64, 10, "horizontalLine.png", moves[i][0]*64, (64-10)/2 + moves[i][1]*64, "path");
+	}
+	
+}
+
+function executeMoves (x,y,given) {
+	given.x = toPixel(x) + ((spaceSize-given.width)/2);
+	given.y = toPixel(y) + ((spaceSize-given.height)/2);
+	playerHP[selectedUnit].x = toPixel(x) + 25+7;
+	playerHP[selectedUnit].y = toPixel(y) + 50+7;
+}
+
+function highlightMoveable(x, y) {
+	getMoveable(x,y);
+
+	for (var i = 0; i < boardRows; i++) {
+		for (var j = 0; j < boardCols; j++) {
+			if (moveableGrid[i][j] > -1 && !(i == x && j == y)) {
+				spaces[i][j].image.src = getImage(i,j,2);
+				spaces[i][j].moveable = true;
+			}
+		}
+	}
+}
+
+function getMoveable(givenX,givenY) {
+	var potentialMoveable = {movement: playerMovement, x: givenX, y: givenY};
+	moveableSpaces = [potentialMoveable];
+	moveableGrid = [];
+	
+	expandMoveable();
+	generateGrid();
+}
+
+function expandMoveable() {
+	for (var i = 0; i < moveableSpaces.length; i++) {
+		if (moveableSpaces[i].movement > 0) {
+			for (var k = 0; k < spaceOffset.length; k++){
+				currX = moveableSpaces[i].x + spaceOffset[k][0];
+				currY = moveableSpaces[i].y + spaceOffset[k][1];
+				if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space being checked is on the board
+					&& moveableSpaces[i].movement - terrainCost[board[currX][currY]] >= 0){
+					newMoveable = {movement: moveableSpaces[i].movement - terrainCost[board[currX][currY]], x: currX, y: currY};
+					moveableSpaces[moveableSpaces.length] = newMoveable;
+				}
+			}
+		}
+	}
+}
+
+function generateGrid() {
+	var current = moveableSpaces[0];
+	
+	for (var q = 0; q <= boardRows; q++) {
+		moveableGrid[q] = [];
+		for (var w = 0; w <= boardCols; w++) {
+			moveableGrid[q][w] = -1;
+		}	
+	}
+	
+	for (var i = 0; i < moveableSpaces.length; i++) {
+		current = moveableSpaces[i];
+
+		if (current.movement > (moveableGrid[current.x][current.y])) {
+			moveableGrid[current.x][current.y] = current.movement;
+		}
+	}
+}
+
+function clearMoveable() {
+	for (var i = 0; i < boardRows; i++) {
+		for (var j = 0; j < boardCols; j++) {
+			spaces[i][j].image.src = getImage(i,j,0);
+			spaces[i][j].moveable = false;
+		}
+	}
+}
+
+function getImage(x,y,category) {
+	return terrain[category][board[x][y]];
+}
+
+function toPixel (given) {
+	return given*spaceSize;
+}
+
+</script>
+
+</body>
+</html>
