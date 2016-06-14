@@ -15,7 +15,6 @@ canvas {
 var spaces = [];
 var boardX = 896;
 var boardY = 896;
-var playerMovement = 3;
 var phase = 0;
 var board = [];
 var moveableSpaces = [];
@@ -30,7 +29,6 @@ var pathY;
 var playerUnits = [];
 var playerHP = [];
 var moves = [];
-var empty = 0;
 var spaceSize = 64;
 var boardRows = 18;
 var boardCols = 18;
@@ -51,8 +49,8 @@ var terrain = [terrainDefault, terrainSelected, terrainMoveable, terrainEnemy];
 
 
 var infantry = {attack: 3, defense: 3, movement: 3};
-var heavyInfantry = {attack: 4, defense: 4, movement: 2};
-var units = [infantry. heavyInfantry];
+var heavyInfantry = {attack: 4, defense: 5, movement: 2};
+var units = [infantry, heavyInfantry];
 
 function startGame() {
 	mapTerrain();
@@ -66,9 +64,9 @@ function startGame() {
 		}
 	}
 	
-	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
+	newPlayerUnit(33, 49, "knight.png", 2, 5, 1);
 	newPlayerUnit(50, 50, "roman.png", 2, 2, 0);
-	newPlayerUnit(50, 50, "roman.png", 2, 5, 0);
+	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
 	newPlayerUnit(50, 50, "roman.png", 7, 7, 0);
 	
 	gameArea.start();
@@ -155,13 +153,12 @@ function component(width, height, color, x, y, type, unit) {
 			ctx.fillText(this.text, this.x, this.y);
 			this.text = unit;
 		}
-		
 		else {
 			ctx.drawImage(this.image, 
 			this.x, 
 			this.y,
 			this.width, this.height);
-			this.stats = unit; 
+			this.stats = unit;
 		}
     }
 	
@@ -236,8 +233,8 @@ function clicked(event) {
 		
 	if (phase == 0 && entityLayer[x][y] > -1) {
 		spaces[x][y].image.src = getImage(x,y,1);
-		highlightMoveable(x,y);
 		selectedUnit = entityLayer[x][y];
+		highlightMoveable(x,y);
 		phase++;
 	}
 
@@ -259,9 +256,7 @@ function clicked(event) {
 	else if (phase == 2) {
 		if (moves[0][0] == x && moves[0][1] == y){
 			entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
-			for (var i = moves.length-1; i >= 0; i--) {
-				executeMoves(moves[i][0],moves[i][1],playerUnits[selectedUnit]);
-			}
+			executeMoves(moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1);
 			entityLayer[x][y] = selectedUnit;
 			clearMoveable();
 			moves = [];
@@ -335,7 +330,13 @@ function drawPath(i) {
 	
 }
 
-function executeMoves (x,y,given) {
+function executeMoves (x,y,given, remaining) {
+		moveActual(x,y,given);
+		if (remaining >= 0)
+			executeMoves(moves[remaining][0],moves[remaining][1],given,remaining-1);
+}
+
+function moveActual(x,y,given) {
 	given.x = toPixel(x,globalOffsetX) + ((spaceSize-given.width)/2);
 	given.y = toPixel(y,globalOffsetY) + ((spaceSize-given.height)/2);
 	playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
@@ -356,7 +357,7 @@ function highlightMoveable(x, y) {
 }
 
 function getMoveable(givenX,givenY) {
-	var potentialMoveable = {movement: playerMovement, x: givenX, y: givenY};
+	var potentialMoveable = {movement: playerUnits[selectedUnit].stats.movement, x: givenX, y: givenY};
 	moveableSpaces = [potentialMoveable];
 	moveableGrid = [];
 	expandMoveable();
