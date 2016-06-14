@@ -32,10 +32,15 @@ var playerHP = [];
 var moves = [];
 var empty = 0;
 var spaceSize = 64;
-var boardRows = 14;
-var boardCols = 14;
+var boardRows = 18;
+var boardCols = 18;
 var selectedUnit;
 var entityLayer = [];
+var globalSpeedX = 0;
+var globalSpeedY = 0;
+var scrollSpeed = 4;
+var globalOffsetX = 0;
+var globalOffsetY = 0;
 
 var terrainDefault = ["grass.png", "trees.png", "mountain.png"];
 var terrainSelected = ["grassSelected.png", "treesSelected.png", "mountainSelected.png"];
@@ -63,13 +68,15 @@ function startGame() {
 	
 	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
 	newPlayerUnit(50, 50, "roman.png", 2, 2, 0);
+	newPlayerUnit(50, 50, "roman.png", 2, 5, 0);
+	newPlayerUnit(50, 50, "roman.png", 7, 7, 0);
 	
 	gameArea.start();
 }
 
 function newPlayerUnit (sizeX, sizeY, img, xCord, yCord, unit) {
-	playerUnits[playerUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord) + ((spaceSize-sizeX)/2), toPixel(yCord) + ((spaceSize-sizeY)/2), "player", units[unit]);
-	playerHP[playerHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord) + 25 + ((64-50)/2), toPixel(yCord) + 50 + ((64-50)/2), "text", "10");
+	playerUnits[playerUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord,globalOffsetX) + ((spaceSize-sizeX)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-sizeY)/2), "player", units[unit]);
+	playerHP[playerHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
 	entityLayer[xCord][yCord] = playerUnits.length-1;
 }
 
@@ -91,16 +98,16 @@ function mapTerrain() {
 	board[8][9] = 1;
 	board[9][8] = 1;
 	
-	board[5][0] = 2;
+	//board[5][0] = 2;
 	board[5][1] = 2;
-	board[5][2] = 2;
+	//board[5][2] = 2;
 	board[5][3] = 2;
 	
 }
 
 function generateSpace (x,y) {
 	var image = getImage(x,y,0);
-	var space = new component(64, 64, image, toPixel(x), toPixel(y), "" + x + "," + y);
+	var space = new component(64, 64, image, toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "" + x + "," + y);
 	return space;
 }
 
@@ -113,6 +120,13 @@ var gameArea = {
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
 		this.interval = setInterval(updateGameArea, 20);
 		window.addEventListener("mouseup", clicked);
+		window.addEventListener('keydown', function (e) {
+            gameArea.keys = (gameArea.keys || []);
+            gameArea.keys[e.keyCode] = true;
+        })
+        window.addEventListener('keyup', function (e) {
+            gameArea.keys[e.keyCode] = false; 
+        })
 		
     },
     clear : function() {
@@ -152,38 +166,73 @@ function component(width, height, color, x, y, type, unit) {
     }
 	
     this.newPos = function() {
-		this.x += this.speedX;
-		this.y += this.speedY;        
+		this.x = this.x + this.speedX + globalSpeedX;
+		this.y = this.y + this.speedY + globalSpeedY;        
 	}
 } 
 
 function updateGameArea() {
     gameArea.clear();
 	
+	if (gameArea.keys) {
+		handleInput();
+	}
+	
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
+			spaces[i][j].newPos();
 			spaces[i][j].update();
 		}
 	}
 	
 	if (path != []) {
 		for (var i = 0; i < path.length; i++) {
+			path[i].newPos();
 			path[i].update();
 		}
 	}
 
 	for (var i = 0; i < playerUnits.length; i++) {
+			playerUnits[i].newPos();
 			playerUnits[i].update();
 	}
 	
 	for (var i = 0; i < playerHP.length; i++) {
+			playerHP[i].newPos();
 			playerHP[i].update();
 	}
 }
 
+function handleInput() {
+    if (gameArea.keys[83] && globalOffsetY > boardY - spaceSize*boardRows) { // w key
+		globalSpeedY = -1*scrollSpeed;
+		globalOffsetY -= scrollSpeed;
+	}  
+	else if (globalSpeedY == -1*scrollSpeed) {globalSpeedY = 0;} //if keyup stop moving
+    
+	if (gameArea.keys[87] && globalOffsetY < 0) { //s
+		globalSpeedY = scrollSpeed;
+		globalOffsetY += scrollSpeed;
+	} 
+	else if (globalSpeedY == scrollSpeed) {globalSpeedY = 0;}
+	
+	if (gameArea.keys[65] && globalOffsetX < 0) { //d
+		globalSpeedX = scrollSpeed;
+		globalOffsetX += scrollSpeed;
+	}
+	else if (globalSpeedX == scrollSpeed) {globalSpeedX = 0;}
+	
+    if (gameArea.keys[68] && globalOffsetX > boardX - spaceSize*boardCols) { //a
+		globalSpeedX = -1*scrollSpeed;
+		globalOffsetX -= scrollSpeed;
+	} 
+	else if (globalSpeedX == -1*scrollSpeed) {globalSpeedX = 0;}
+	
+}
+
 function clicked(event) {
-	var x = parseInt(event.clientX/64);
-	var y = parseInt(event.clientY/64);
+	var x = toSpace(event.clientX, globalOffsetX);
+	var y = toSpace(event.clientY, globalOffsetY);
 		
 	if (phase == 0 && entityLayer[x][y] > -1) {
 		spaces[x][y].image.src = getImage(x,y,1);
@@ -232,7 +281,8 @@ function makeMoves (x,y,given) {
 	var current;
 	var selected = [0,0]
 	moves.push([x,y]);
-	while (!(arrayCompare(moves[moves.length-1],[Math.trunc(given.x/64),Math.trunc(given.y/64)]))) { //while the last position in the list of moves != the starting position
+
+	while (!(arrayCompare(moves[moves.length-1],[toSpace(given.x, globalOffsetX),toSpace(given.y, globalOffsetY)]))) { //while the last position in the list of moves != the starting position
 		current = -1;
 		
 		for (var i = 0; i < spaceOffset.length; i++) {
@@ -277,19 +327,19 @@ function arrayCompare (array1, array2) {
 
 function drawPath(i) {
 	if (moves[i][1] != moves[i+1][1]) {
-		path[i] = new component(10, 64, "verticalLine.png", (64-10)/2 + moves[i][0]*64, moves[i][1]*64, "path");
+		path[i] = new component(10, 64, "verticalLine.png", (64-10)/2 + moves[i][0]*64 + globalOffsetX, moves[i][1]*64 + globalOffsetY, "path");
 	}
 	else {
-		path[i] = new component(64, 10, "horizontalLine.png", moves[i][0]*64, (64-10)/2 + moves[i][1]*64, "path");
+		path[i] = new component(64, 10, "horizontalLine.png", moves[i][0]*64 + globalOffsetX, (64-10)/2 + moves[i][1]*64 + globalOffsetY, "path");
 	}
 	
 }
 
 function executeMoves (x,y,given) {
-	given.x = toPixel(x) + ((spaceSize-given.width)/2);
-	given.y = toPixel(y) + ((spaceSize-given.height)/2);
-	playerHP[selectedUnit].x = toPixel(x) + 25+7;
-	playerHP[selectedUnit].y = toPixel(y) + 50+7;
+	given.x = toPixel(x,globalOffsetX) + ((spaceSize-given.width)/2);
+	given.y = toPixel(y,globalOffsetY) + ((spaceSize-given.height)/2);
+	playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
+	playerHP[selectedUnit].y = toPixel(y,globalOffsetY) + 57;
 }
 
 function highlightMoveable(x, y) {
@@ -309,7 +359,6 @@ function getMoveable(givenX,givenY) {
 	var potentialMoveable = {movement: playerMovement, x: givenX, y: givenY};
 	moveableSpaces = [potentialMoveable];
 	moveableGrid = [];
-	
 	expandMoveable();
 	generateGrid();
 }
@@ -362,8 +411,12 @@ function getImage(x,y,category) {
 	return terrain[category][board[x][y]];
 }
 
-function toPixel (given) {
-	return given*spaceSize;
+function toPixel (given,offset) {
+	return given*spaceSize + offset;
+}
+
+function toSpace(given,offset) {
+	return parseInt((given-offset)/spaceSize);
 }
 
 </script>
