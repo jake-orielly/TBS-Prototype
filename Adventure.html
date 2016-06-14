@@ -39,6 +39,8 @@ var globalSpeedY = 0;
 var scrollSpeed = 4;
 var globalOffsetX = 0;
 var globalOffsetY = 0;
+var moveParams = [];
+var delay = -2;
 
 var terrainDefault = ["grass.png", "trees.png", "mountain.png"];
 var terrainSelected = ["grassSelected.png", "treesSelected.png", "mountainSelected.png"];
@@ -198,6 +200,15 @@ function updateGameArea() {
 			playerHP[i].newPos();
 			playerHP[i].update();
 	}
+	
+	if (delay > 0) {
+		delay--;
+	}
+	else if (delay == 0) {
+		delay--;
+		//alert(43);
+		executeMoves();
+	}
 }
 
 function handleInput() {
@@ -228,46 +239,46 @@ function handleInput() {
 }
 
 function clicked(event) {
-	var x = toSpace(event.clientX, globalOffsetX);
-	var y = toSpace(event.clientY, globalOffsetY);
-		
-	if (phase == 0 && entityLayer[x][y] > -1) {
-		spaces[x][y].image.src = getImage(x,y,1);
-		selectedUnit = entityLayer[x][y];
-		highlightMoveable(x,y);
-		phase++;
-	}
-
-	else if (entityLayer[x][y] > -1) {
-		clearMoveable();
-		moves = [];
-		path = [];
-		phase = 0
-		clicked(event);
-	}
-	
-	else if (phase == 1) {
-		if (spaces[x][y].moveable) {
-			makeMoves(x,y,playerUnits[selectedUnit])
+	if (delay < 0) {
+		var x = toSpace(event.clientX, globalOffsetX);
+		var y = toSpace(event.clientY, globalOffsetY);
+			
+		if (phase == 0 && entityLayer[x][y] > -1) {
+			spaces[x][y].image.src = getImage(x,y,1);
+			selectedUnit = entityLayer[x][y];
+			highlightMoveable(x,y);
 			phase++;
 		}
-	}
-	
-	else if (phase == 2) {
-		if (moves[0][0] == x && moves[0][1] == y){
-			entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
-			executeMoves(moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1);
-			entityLayer[x][y] = selectedUnit;
+
+		else if (entityLayer[x][y] > -1) {
 			clearMoveable();
 			moves = [];
 			path = [];
-			phase = 0;
-		}
-		else if (spaces[x][y].moveable) {
-			phase = 1;
-			moves = [];
-			path = [];
+			phase = 0
 			clicked(event);
+		}
+		
+		else if (phase == 1) {
+			if (spaces[x][y].moveable) {
+				makeMoves(x,y,playerUnits[selectedUnit])
+				phase++;
+			}
+		}
+		
+		else if (phase == 2) {
+			if (moves[0][0] == x && moves[0][1] == y){
+				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
+				path = [];
+				clearMoveable();
+				executeMoves();
+			}
+			else if (spaces[x][y].moveable) {
+				phase = 1;
+				moves = [];
+				path = [];
+				clicked(event);
+			}
 		}
 	}
 }
@@ -330,10 +341,23 @@ function drawPath(i) {
 	
 }
 
-function executeMoves (x,y,given, remaining) {
-		moveActual(x,y,given);
-		if (remaining >= 0)
-			executeMoves(moves[remaining][0],moves[remaining][1],given,remaining-1);
+function executeMoves () {
+		moveActual(moveParams[0],moveParams[1],moveParams[2]);
+		if (moveParams[3] >= 0) {
+			moveParams[0] = moves[moveParams[3]][0];
+			moveParams[1] = moves[moveParams[3]][1];
+			moveParams[3] = moveParams[3]-1;
+			
+			if (delay == -2) {
+				delay = 0;
+			}
+			else {
+				delay = 9;
+			}
+		}
+		else if (moveParams[3] == -1) {
+			moveOver();
+		}
 }
 
 function moveActual(x,y,given) {
@@ -341,6 +365,13 @@ function moveActual(x,y,given) {
 	given.y = toPixel(y,globalOffsetY) + ((spaceSize-given.height)/2);
 	playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
 	playerHP[selectedUnit].y = toPixel(y,globalOffsetY) + 57;
+}
+
+function moveOver() {
+	entityLayer[moves[0][0]][moves[0][1]] = selectedUnit;
+	moves = [];
+	phase = 0;
+	delay = -2;
 }
 
 function highlightMoveable(x, y) {
