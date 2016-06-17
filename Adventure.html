@@ -47,12 +47,19 @@ var terrainSelected = ["grassSelected.png", "treesSelected.png", "mountainSelect
 var terrainMoveable = ["grassMoveable.png", "treesMoveable.png", "mountainMoveable.png"];
 var terrainEnemy = ["grassEnemy.png","treesEnemy.png","mountainEnemy.png"];
 var terrainCost = [1,2,3];
+var terrainDef = [1,2,3];
 var terrain = [terrainDefault, terrainSelected, terrainMoveable, terrainEnemy];
 
+var terrainCard;
+var terrainCardMove;
+var terrainCardDef;
+var terrainCardSpace;
+var terrainCardOn = false;
 
 var infantry = {attack: 3, defense: 3, movement: 3};
 var heavyInfantry = {attack: 4, defense: 5, movement: 2};
-var units = [infantry, heavyInfantry];
+var cavalry = {attack: 5, defense: 2, movement: 4};
+var units = [infantry, heavyInfantry, cavalry];
 
 function startGame() {
 	mapTerrain();
@@ -67,9 +74,13 @@ function startGame() {
 	}
 	
 	newPlayerUnit(33, 49, "knight.png", 2, 5, 1);
-	newPlayerUnit(50, 50, "roman.png", 2, 2, 0);
+	newPlayerUnit(50, 50, "cavalry.png", 2, 2, 2);
 	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
 	newPlayerUnit(50, 50, "roman.png", 7, 7, 0);
+	
+	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
+	terrainCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
+	terrainCardDef = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "3");
 	
 	gameArea.start();
 }
@@ -145,6 +156,7 @@ function component(width, height, color, x, y, type, unit) {
 	this.image = new Image();
 	this.image.src = color;
     this.moveable = false;
+	this.text = unit
 	
     this.update = function() {
 		ctx = gameArea.context;
@@ -153,7 +165,7 @@ function component(width, height, color, x, y, type, unit) {
 			ctx.font = this.width + " " + this.height;
 			ctx.fillStyle = color;
 			ctx.fillText(this.text, this.x, this.y);
-			this.text = unit;
+			
 		}
 		else {
 			ctx.drawImage(this.image, 
@@ -201,12 +213,17 @@ function updateGameArea() {
 			playerHP[i].update();
 	}
 	
+	if (terrainCardOn) {
+		terrainCard.update();
+		terrainCardMove.update();
+		terrainCardDef.update();
+	}
+	
 	if (delay > 0) {
 		delay--;
 	}
 	else if (delay == 0) {
 		delay--;
-		//alert(43);
 		executeMoves();
 	}
 }
@@ -243,25 +260,43 @@ function clicked(event) {
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
 			
-		if (phase == 0 && entityLayer[x][y] > -1) {
-			spaces[x][y].image.src = getImage(x,y,1);
-			selectedUnit = entityLayer[x][y];
-			highlightMoveable(x,y);
-			phase++;
+		if (phase == 0) {
+			
+			if (entityLayer[x][y] > -1) {
+				if (terrainCardSpace) {
+					terrainCardSpace.image.src = getImage(toSpace(terrainCardSpace.x,globalOffsetX),toSpace(terrainCardSpace.y,globalOffsetY),0);
+				}
+				spaces[x][y].image.src = getImage(x,y,1);
+				selectedUnit = entityLayer[x][y];
+				highlightMoveable(x,y);	
+				terrainCardOn = false;
+				phase++;
+			}
+			
+			else {
+				if (terrainCardSpace) {
+					terrainCardSpace.image.src = getImage(toSpace(terrainCardSpace.x,globalOffsetX),toSpace(terrainCardSpace.y,globalOffsetY),0);
+				}
+				
+				terrainCardSpace = spaces[x][y];
+				terrainCardSpace.image.src = getImage(x,y,1);
+				terrainCardOn = true;
+				terrainCardMove.text = terrainCost[board[x][y]];
+				terrainCardDef.text = terrainDef[board[x][y]];
+			}
 		}
 
 		else if (entityLayer[x][y] > -1) {
-			clearMoveable();
-			moves = [];
-			path = [];
-			phase = 0
-			clicked(event);
+			clickedReset();
 		}
 		
 		else if (phase == 1) {
 			if (spaces[x][y].moveable) {
 				makeMoves(x,y,playerUnits[selectedUnit])
 				phase++;
+			}
+			else {
+				clickedReset();
 			}
 		}
 		
@@ -281,6 +316,14 @@ function clicked(event) {
 			}
 		}
 	}
+}
+
+function clickedReset() {
+	clearMoveable();
+	moves = [];
+	path = [];
+	phase = 0
+	clicked(event);
 }
 
 function makeMoves (x,y,given) {
