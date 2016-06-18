@@ -42,13 +42,9 @@ var globalOffsetY = 0;
 var moveParams = [];
 var delay = -2;
 
-var terrainDefault = ["grass.png", "trees.png", "mountain.png"];
-var terrainSelected = ["grassSelected.png", "treesSelected.png", "mountainSelected.png"];
-var terrainMoveable = ["grassMoveable.png", "treesMoveable.png", "mountainMoveable.png"];
-var terrainEnemy = ["grassEnemy.png","treesEnemy.png","mountainEnemy.png"];
+var terrainImg = ["grass.png", "trees.png", "mountain.png"];
 var terrainCost = [1,2,3];
 var terrainDef = [1,2,3];
-var terrain = [terrainDefault, terrainSelected, terrainMoveable, terrainEnemy];
 
 var terrainCard;
 var terrainCardMove;
@@ -56,10 +52,21 @@ var terrainCardDef;
 var terrainCardSpace;
 var terrainCardOn = false;
 
+var unitCard;
+var unitCardAttack;
+var unitCardDef;
+var unitCardMove;
+var unitCardSight;
+var unitCardOn = false;
+
 var infantry = {attack: 3, defense: 3, movement: 3};
 var heavyInfantry = {attack: 4, defense: 5, movement: 2};
 var cavalry = {attack: 5, defense: 2, movement: 4};
-var units = [infantry, heavyInfantry, cavalry];
+var archer = {attack: 4, defense: 1, movement: 3};
+
+var units = [infantry, heavyInfantry, cavalry, archer];
+
+var movementHighlights = [];
 
 function startGame() {
 	mapTerrain();
@@ -77,10 +84,17 @@ function startGame() {
 	newPlayerUnit(50, 50, "cavalry.png", 2, 2, 2);
 	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
 	newPlayerUnit(50, 50, "roman.png", 7, 7, 0);
+	newPlayerUnit(50, 50, "archer.png", 1, 1, 3);
 	
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
 	terrainCardDef = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "3");
+	
+	unitCard = new component(128, 128, "unitCard.png", boardX-spaceSize*2, boardY-spaceSize*2, "none", "none");
+	unitCardAttack = new component("900 32px", "Arial", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 48, "text", "1");
+	unitCardDef = new component("900 32px", "Arial", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 103, "text", "2");
+	unitCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
+	unitCardSight = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "4");
 	
 	gameArea.start();
 }
@@ -117,8 +131,8 @@ function mapTerrain() {
 }
 
 function generateSpace (x,y) {
-	var image = getImage(x,y,0);
-	var space = new component(64, 64, image, toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "" + x + "," + y);
+	var image = getImage(x,y);
+	var space = new component(spaceSize, spaceSize, image, toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "" + x + "," + y);
 	return space;
 }
 
@@ -165,8 +179,16 @@ function component(width, height, color, x, y, type, unit) {
 			ctx.font = this.width + " " + this.height;
 			ctx.fillStyle = color;
 			ctx.fillText(this.text, this.x, this.y);
-			
 		}
+		
+		else if (this.type == "square") {
+			if (color == "blue")
+				ctx.fillStyle = "rgba(69, 125, 211, 0.5)";
+			else 
+				ctx.fillStyle = "rgba(212, 210, 144, 0.5)";
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+		}
+		
 		else {
 			ctx.drawImage(this.image, 
 			this.x, 
@@ -195,14 +217,14 @@ function updateGameArea() {
 			spaces[i][j].update();
 		}
 	}
-	
-	if (path != []) {
-		for (var i = 0; i < path.length; i++) {
-			path[i].newPos();
-			path[i].update();
+
+	if (movementHighlights != []) {
+		for (var i = 0; i < movementHighlights.length; i++) {
+				movementHighlights[i].newPos();
+				movementHighlights[i].update();
 		}
 	}
-
+	
 	for (var i = 0; i < playerUnits.length; i++) {
 			playerUnits[i].newPos();
 			playerUnits[i].update();
@@ -213,11 +235,27 @@ function updateGameArea() {
 			playerHP[i].update();
 	}
 	
+	if (path != []) {
+		for (var i = 0; i < path.length; i++) {
+			path[i].newPos();
+			path[i].update();
+		}
+	}
+	
 	if (terrainCardOn) {
 		terrainCard.update();
 		terrainCardMove.update();
 		terrainCardDef.update();
 	}
+	
+	if (unitCardOn) {
+	unitCard.update();
+	unitCardAttack.update();
+	unitCardDef.update();
+	unitCardMove.update();
+	unitCardSight.update();
+	}
+	
 	
 	if (delay > 0) {
 		delay--;
@@ -264,22 +302,27 @@ function clicked(event) {
 			
 			if (entityLayer[x][y] > -1) {
 				if (terrainCardSpace) {
-					terrainCardSpace.image.src = getImage(toSpace(terrainCardSpace.x,globalOffsetX),toSpace(terrainCardSpace.y,globalOffsetY),0);
+					movementHighlights = [];
 				}
-				spaces[x][y].image.src = getImage(x,y,1);
+				//spaces[x][y].image.src = getImage(x,y,1);
 				selectedUnit = entityLayer[x][y];
 				highlightMoveable(x,y);	
 				terrainCardOn = false;
+				unitCardAttack.text = playerUnits[entityLayer[x][y]].stats.attack;
+				unitCardDef.text = playerUnits[entityLayer[x][y]].stats.defense;
+				unitCardMove.text = playerUnits[entityLayer[x][y]].stats.movement;
+				//unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
+				unitCardOn = true;
 				phase++;
 			}
 			
 			else {
 				if (terrainCardSpace) {
-					terrainCardSpace.image.src = getImage(toSpace(terrainCardSpace.x,globalOffsetX),toSpace(terrainCardSpace.y,globalOffsetY),0);
+					movementHighlights = [];
 				}
 				
 				terrainCardSpace = spaces[x][y];
-				terrainCardSpace.image.src = getImage(x,y,1);
+				movementHighlights[0] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
 				terrainCardOn = true;
 				terrainCardMove.text = terrainCost[board[x][y]];
 				terrainCardDef.text = terrainDef[board[x][y]];
@@ -292,7 +335,7 @@ function clicked(event) {
 		
 		else if (phase == 1) {
 			if (spaces[x][y].moveable) {
-				makeMoves(x,y,playerUnits[selectedUnit])
+				makeMoves(x,y,playerUnits[selectedUnit]);
 				phase++;
 			}
 			else {
@@ -306,6 +349,7 @@ function clicked(event) {
 				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
 				path = [];
 				clearMoveable();
+				unitCardOn = false;
 				executeMoves();
 			}
 			else if (spaces[x][y].moveable) {
@@ -314,11 +358,15 @@ function clicked(event) {
 				path = [];
 				clicked(event);
 			}
+			else {
+				clickedReset();
+			}
 		}
 	}
 }
 
 function clickedReset() {
+	unitCardOn = false;
 	clearMoveable();
 	moves = [];
 	path = [];
@@ -423,7 +471,7 @@ function highlightMoveable(x, y) {
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
 			if (moveableGrid[i][j] > -1 && !(i == x && j == y)) {
-				spaces[i][j].image.src = getImage(i,j,2);
+				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "blue", toPixel(i,globalOffsetX), toPixel(j,globalOffsetY), "square", "none");
 				spaces[i][j].moveable = true;
 			}
 		}
@@ -476,14 +524,14 @@ function generateGrid() {
 function clearMoveable() {
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
-			spaces[i][j].image.src = getImage(i,j,0);
+			movementHighlights = [];
 			spaces[i][j].moveable = false;
 		}
 	}
 }
 
 function getImage(x,y,category) {
-	return terrain[category][board[x][y]];
+	return terrainImg[board[x][y]];
 }
 
 function toPixel (given,offset) {
