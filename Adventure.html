@@ -42,6 +42,9 @@ var globalOffsetY = 0;
 var moveParams = [];
 var delay = -2;
 
+var fogMap = [];
+var fogLayer = [];
+
 var terrainImg = ["grass.png", "trees.png", "mountain.png"];
 var terrainCost = [1,2,3];
 var terrainDef = [1,2,3];
@@ -59,10 +62,10 @@ var unitCardMove;
 var unitCardSight;
 var unitCardOn = false;
 
-var infantry = {attack: 3, defense: 3, movement: 3};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2};
-var cavalry = {attack: 5, defense: 2, movement: 4};
-var archer = {attack: 4, defense: 1, movement: 3};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4};
+var archer = {attack: 4, defense: 1, movement: 3, sight: 3};
 
 var units = [infantry, heavyInfantry, cavalry, archer];
 
@@ -98,6 +101,7 @@ function startGame() {
 	
 	gameArea.start();
 }
+
 
 function newPlayerUnit (sizeX, sizeY, img, xCord, yCord, unit) {
 	playerUnits[playerUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord,globalOffsetX) + ((spaceSize-sizeX)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-sizeY)/2), "player", units[unit]);
@@ -184,6 +188,8 @@ function component(width, height, color, x, y, type, unit) {
 		else if (this.type == "square") {
 			if (color == "blue")
 				ctx.fillStyle = "rgba(69, 125, 211, 0.5)";
+			else if (color == "fog") 
+				ctx.fillStyle = "rgba(89, 89, 89, 0.7)";
 			else 
 				ctx.fillStyle = "rgba(212, 210, 144, 0.5)";
             ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -255,7 +261,8 @@ function updateGameArea() {
 	unitCardMove.update();
 	unitCardSight.update();
 	}
-	
+
+	fogUpdate();
 	
 	if (delay > 0) {
 		delay--;
@@ -263,6 +270,52 @@ function updateGameArea() {
 	else if (delay == 0) {
 		delay--;
 		executeMoves();
+	}
+}
+
+function fogUpdate() {
+	fogLayer = [];
+	
+	for (var i = 0; i < boardRows; i++) {
+		fogMap[i] = [];
+		for (var j = 0; j < boardCols; j++) {
+			fogMap[i][j] = 1;
+		}
+	}
+	
+	if (unitCardOn) {
+		fogMap[toSpace(boardX,0)-2][toSpace(boardY,0)-2] = 0;
+		fogMap[toSpace(boardX,0)-1][toSpace(boardY,0)-2] = 0;
+		fogMap[toSpace(boardX,0)-2][toSpace(boardY,0)-1] = 0;
+		fogMap[toSpace(boardX,0)-1][toSpace(boardY,0)-1] = 0;
+	}
+	else if (terrainCardOn) {
+		fogMap[toSpace(boardX,0)-1][toSpace(boardY,0)-2] = 0;
+		fogMap[toSpace(boardX,0)-1][toSpace(boardY,0)-1] = 0;
+	}
+	
+	for (var i = 0; i < fogMap.length; i++) {
+		for (var j = 0; j < fogMap[0].length; j++) {
+			defog(i,j);
+			if (fogMap[i][j]) {
+				fogLayer[fogLayer.length] = new component(spaceSize, spaceSize, "fog", toPixel(i,globalOffsetX), toPixel(j,globalOffsetY), "square", "none");
+			}
+		}
+	}
+	
+	for (var i = 0; i < fogLayer.length; i++) {
+			fogLayer[i].update();
+	}
+}
+
+function defog(i,j) {
+	if (entityLayer[i][j] > -1) {
+		fogMap[i][j] = 0;
+		
+		for (var k = 0; k < spaceOffset.length; k++) {
+			fogMap[i + spaceOffset[k][0]][j + spaceOffset[k][1]] = 0;
+		}
+		//playerUnits[entityLayer[x][y]].stats.sight
 	}
 }
 
@@ -294,10 +347,11 @@ function handleInput() {
 }
 
 function clicked(event) {
+
 	if (delay < 0) {
+
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
-			
 		if (phase == 0) {
 			
 			if (entityLayer[x][y] > -1) {
@@ -311,7 +365,7 @@ function clicked(event) {
 				unitCardAttack.text = playerUnits[entityLayer[x][y]].stats.attack;
 				unitCardDef.text = playerUnits[entityLayer[x][y]].stats.defense;
 				unitCardMove.text = playerUnits[entityLayer[x][y]].stats.movement;
-				//unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
+				unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
 				unitCardOn = true;
 				phase++;
 			}
@@ -423,13 +477,20 @@ function arrayCompare (array1, array2) {
 }
 
 function drawPath(i) {
-	if (moves[i][1] != moves[i+1][1]) {
-		path[i] = new component(10, 64, "verticalLine.png", (64-10)/2 + moves[i][0]*64 + globalOffsetX, moves[i][1]*64 + globalOffsetY, "path");
-	}
-	else {
-		path[i] = new component(64, 10, "horizontalLine.png", moves[i][0]*64 + globalOffsetX, (64-10)/2 + moves[i][1]*64 + globalOffsetY, "path");
-	}
+	/*if (i > 0) {
+		if((moves[i-1][0] != moves[i][0]) && (moves[i+1][1] != moves[i][1])) {
+			path[i] = new component(64, 64, "corner3.png", moves[i][0]*64 + globalOffsetX, moves[i][1]*64 + globalOffsetY, "path");
+		}
+	}*/
 	
+	if (path[i] == undefined) {
+		if (moves[i][1] != moves[i+1][1]) {
+			path[i] = new component(10, 64, "verticalLine.png", (64-10)/2 + moves[i][0]*64 + globalOffsetX, moves[i][1]*64 + globalOffsetY, "path");
+		}
+		else {
+			path[i] = new component(64, 10, "horizontalLine.png", moves[i][0]*64 + globalOffsetX, (64-10)/2 + moves[i][1]*64 + globalOffsetY, "path");
+		}
+	}
 }
 
 function executeMoves () {
