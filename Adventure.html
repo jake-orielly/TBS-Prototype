@@ -7,14 +7,18 @@ canvas {
     border: 1px solid #d3d3d3;
     background-color: #f1f1f1;
 }
+
 </style>
 </head>
 <body onload="startGame()" oncontextmenu="return false">
 <script>
 
+var spaceSize = 64;
+var boardRows = 13;
+var boardCols = 13;
 var spaces = [];
-var boardX = 896;
-var boardY = 896;
+var boardX;
+var boardY;
 var phase = 0;
 var board = [];
 var moveableSpaces = [];
@@ -28,10 +32,9 @@ var pathX;
 var pathY;
 var playerUnits = [];
 var playerHP = [];
+var enemyUnits = [];
+var enemyHP = [];
 var moves = [];
-var spaceSize = 64;
-var boardRows = 18;
-var boardCols = 18;
 var selectedUnit;
 var entityLayer = [];
 var globalSpeedX = 0;
@@ -41,13 +44,17 @@ var globalOffsetX = 0;
 var globalOffsetY = 0;
 var moveParams = [];
 var delay = -2;
+var capturing = 0;
 
 var fogMap = [];
 var fogLayer = [];
 
-var terrainImg = ["grass.png", "trees.png", "mountain.png"];
-var terrainCost = [1,2,3];
-var terrainDef = [1,2,3];
+var terrainImg = ["grass.png", "trees.png", "mountain.png","river.png",
+"friendlyCastle.png","friendlyBarracks.png","friendlyVillage.png",
+"barracks.png","village.png", 
+"enemyCastle.png", "enemyBarracks.png","enemyVillage.png"];
+var terrainCost = [1,2,3,50,1,1,1,1,1,1,1,1];
+var terrainDef = [1,2,3,1,4,3,2,3,2,4,3,2];
 
 var terrainCard;
 var terrainCardMove;
@@ -55,12 +62,16 @@ var terrainCardDef;
 var terrainCardSpace;
 var terrainCardOn = false;
 
+var structureMap = [];
+var capturing = 0; 
+var captureCounter; 
+
 var unitCard;
 var unitCardAttack;
 var unitCardDef;
 var unitCardMove;
 var unitCardSight;
-var unitCardOn = false;
+var unitCardOn = 0;
 
 var infantry = {attack: 3, defense: 3, movement: 3, sight: 3};
 var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2};
@@ -71,8 +82,23 @@ var units = [infantry, heavyInfantry, cavalry, archer];
 
 var movementHighlights = [];
 
+var frame;
+
 function startGame() {
+	frame = 0; 
+	
+	if (boardRows * spaceSize > window.innerWidth) 
+		boardX = parseInt(window.innerWidth/spaceSize)*spaceSize;
+	else 
+		boardX = boardRows * spaceSize;
+		
+	if (boardCols * spaceSize > window.innerHeight)
+		boardY = parseInt(window.innerHeight/spaceSize)*spaceSize;
+	else 
+		boardY = boardCols * spaceSize;
+
 	mapTerrain();
+	mapStructures(); 
 	
 	for (var i = 0; i < boardRows; i++) {
 		spaces[i] = [];
@@ -85,9 +111,11 @@ function startGame() {
 	
 	newPlayerUnit(33, 49, "knight.png", 2, 5, 1);
 	newPlayerUnit(50, 50, "cavalry.png", 2, 2, 2);
-	newPlayerUnit(50, 50, "roman.png", 4, 7, 0);
-	newPlayerUnit(50, 50, "roman.png", 7, 7, 0);
-	newPlayerUnit(50, 50, "archer.png", 1, 1, 3);
+	newPlayerUnit(50, 50, "soldier.png", 4, 4, 0);
+	newPlayerUnit(50, 50, "soldier.png", 3, 3, 0);
+	//newPlayerUnit(50, 50, "archer.png", 1, 1, 3);
+	
+	//newEnemyUnit(50, 50, "soldier.png", 9, 9, 0);
 	
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
@@ -99,6 +127,8 @@ function startGame() {
 	unitCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
 	unitCardSight = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "4");
 	
+	captureCounter = new component("900 32px", "Arial", "white", boardX-spaceSize*2 + 35, boardY-spaceSize*2 + 103, "text", "4");
+	
 	gameArea.start();
 }
 
@@ -109,6 +139,12 @@ function newPlayerUnit (sizeX, sizeY, img, xCord, yCord, unit) {
 	entityLayer[xCord][yCord] = playerUnits.length-1;
 }
 
+function newEnemyUnit (sizeX, sizeY, img, xCord, yCord, unit) {
+	enemyUnits[enemyUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord,globalOffsetX) + ((spaceSize-sizeX)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-sizeY)/2), "enemy", units[unit]);
+	enemyHP[enemyHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
+	entityLayer[xCord][yCord] = enemyUnits.length-1;
+} 
+
 function mapTerrain() {
 	for (var i = 0; i < boardRows; i++) {
 		board[i] = [];
@@ -117,21 +153,97 @@ function mapTerrain() {
 		}
 	}
 	
-	board[3][3] = 1;
-	board[3][4] = 1;
-	board[4][3] = 1;
-	board[4][4] = 1;
-	board[4][5] = 1;
+	//player's base
+	board[1][1] = 4;
+	board[1][2] = 5;
+	board[2][1] = 5;
+	board[1][3] = 6;
+	board[3][1] = 6;
 	
-	board[8][8] = 1;
-	board[8][9] = 1;
-	board[9][8] = 1;
+	//enemy base
+	board[11][1] = 9;
+	board[11][2] = 10;
+	board[10][1] = 10;
+	board[11][3] = 11;
+	board[9][1] = 11;
 	
-	//board[5][0] = 2;
-	board[5][1] = 2;
-	//board[5][2] = 2;
-	board[5][3] = 2;
+	//southern island
+	board[4][12] = 3;
+	board[4][11] = 3;
+	board[4][10] = 3;
+	board[8][12] = 3;
+	board[8][11] = 3;
+	board[8][10] = 3;
+	board[5][9] = 3;
+	board[7][9] = 3;
 	
+	board[5][12] = 8;
+	board[7][12] = 8;
+	board[6][11] = 7;
+	
+	//southwest forrest
+	board[0][10] = 1;
+	board[1][10] = 1;
+	board[0][11] = 1;
+	board[1][11] = 1;
+	board[1][12] = 1;
+	board[2][11] = 1;
+	board[2][12] = 1;
+	board[0][9] = 1;
+	board[0][8] = 1;
+	board[1][9] = 1;
+	board[0][12] = 8;
+	board[0][10] = 8;
+	
+	//southeast forrest
+	board[10][11] = 1;
+	board[10][12] = 1;
+	board[11][9] = 1;
+	board[11][10] = 1;
+	board[11][11] = 1;
+	board[11][12] = 1;
+	board[12][8] = 1;
+	board[12][9] = 1;
+	board[12][10] = 1;
+	board[12][11] = 1;
+	board[12][12] = 8;
+	board[12][10] = 8;
+	
+	//northern mountain range
+	board[6][0] = 2;
+	board[6][1] = 2;
+	board[6][2] = 2;
+	board[6][3] = 2;
+	board[5][0] = 1;
+	board[5][1] = 1;
+	board[5][2] = 1;
+	board[5][3] = 1;
+	board[7][0] = 1;
+	board[7][1] = 1;
+	board[7][2] = 1;
+	board[7][3] = 1;
+	board[6][4] = 1;
+	
+	//central town
+	board[5][5] = 8;
+	board[5][7] = 8;
+	board[7][5] = 8;
+	board[7][7] = 8;
+	board[6][6] = 7;
+}
+
+function mapStructures() {
+	for (var i = 0; i < boardRows; i++) {
+		structureMap[i] = [];
+		for (var j = 0; j < boardCols; j++) {
+			if (board[i][j] > 6) 
+				structureMap[i][j] = -20;
+			else if (board[i][j] > 3)
+				structureMap[i][j] = 20;
+			else 
+				structureMap[i][j] = 0;
+		}
+	}
 }
 
 function generateSpace (x,y) {
@@ -196,7 +308,8 @@ function component(width, height, color, x, y, type, unit) {
 		}
 		
 		else {
-			ctx.drawImage(this.image, 
+			ctx.drawImage(
+			this.image, 
 			this.x, 
 			this.y,
 			this.width, this.height);
@@ -241,6 +354,16 @@ function updateGameArea() {
 			playerHP[i].update();
 	}
 	
+	for (var i = 0; i < enemyUnits.length; i++) {
+			enemyUnits[i].newPos();
+			enemyUnits[i].update();
+	}
+	
+	for (var i = 0; i < enemyHP.length; i++) {
+			enemyHP[i].newPos();
+			enemyHP[i].update();
+	}
+	
 	if (path != []) {
 		for (var i = 0; i < path.length; i++) {
 			path[i].newPos();
@@ -262,7 +385,21 @@ function updateGameArea() {
 	unitCardSight.update();
 	}
 
-	fogUpdate();
+	if (capturing) {
+		if (frame % 7 == 0) {
+			if (capturing > 0) {
+				captureCounter.text = captureCounter.text+1;							
+				if (captureCounter.text == -10) {
+					capturing = -4;
+				}
+			}
+			else if (capturing < 0) {
+				capturing++;
+			}
+		}
+		captureCounter.update();
+	}
+	//fogUpdate();
 	
 	if (delay > 0) {
 		delay--;
@@ -271,6 +408,8 @@ function updateGameArea() {
 		delay--;
 		executeMoves();
 	}
+	
+	frame++;
 }
 
 function fogUpdate() {
@@ -320,7 +459,7 @@ function defog(i,j) {
 }
 
 function handleInput() {
-    if (gameArea.keys[83] && globalOffsetY > boardY - spaceSize*boardRows) { // w key
+    if (gameArea.keys[83] && globalOffsetY > boardY - spaceSize*boardCols) { // w key
 		globalSpeedY = -1*scrollSpeed;
 		globalOffsetY -= scrollSpeed;
 	}  
@@ -338,7 +477,7 @@ function handleInput() {
 	}
 	else if (globalSpeedX == scrollSpeed) {globalSpeedX = 0;}
 	
-    if (gameArea.keys[68] && globalOffsetX > boardX - spaceSize*boardCols) { //a
+    if (gameArea.keys[68] && globalOffsetX > boardX - spaceSize*boardRows) { //a
 		globalSpeedX = -1*scrollSpeed;
 		globalOffsetX -= scrollSpeed;
 	} 
@@ -347,7 +486,6 @@ function handleInput() {
 }
 
 function clicked(event) {
-
 	if (delay < 0) {
 
 		var x = toSpace(event.clientX, globalOffsetX);
@@ -366,7 +504,7 @@ function clicked(event) {
 				unitCardDef.text = playerUnits[entityLayer[x][y]].stats.defense;
 				unitCardMove.text = playerUnits[entityLayer[x][y]].stats.movement;
 				unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
-				unitCardOn = true;
+				unitCardOn = 1;
 				phase++;
 			}
 			
@@ -403,7 +541,7 @@ function clicked(event) {
 				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
 				path = [];
 				clearMoveable();
-				unitCardOn = false;
+				unitCardOn = 0;
 				executeMoves();
 			}
 			else if (spaces[x][y].moveable) {
@@ -420,7 +558,7 @@ function clicked(event) {
 }
 
 function clickedReset() {
-	unitCardOn = false;
+	unitCardOn = 0;
 	clearMoveable();
 	moves = [];
 	path = [];
@@ -517,6 +655,14 @@ function moveActual(x,y,given) {
 	given.y = toPixel(y,globalOffsetY) + ((spaceSize-given.height)/2);
 	playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
 	playerHP[selectedUnit].y = toPixel(y,globalOffsetY) + 57;
+	if(structureMap[x][y] < 0) {
+		captureStructure(x,y);
+	}
+}
+
+function captureStructure(x,y) {
+	capturing = true;
+	captureCounter.text = structureMap[x][y];
 }
 
 function moveOver() {
@@ -524,6 +670,7 @@ function moveOver() {
 	moves = [];
 	phase = 0;
 	delay = -2;
+	//alert(structureMap[moves[0][0]][moves[0][1]]);
 }
 
 function highlightMoveable(x, y) {
