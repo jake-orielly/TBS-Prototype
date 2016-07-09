@@ -44,7 +44,6 @@ var globalOffsetX = 0;
 var globalOffsetY = 0;
 var moveParams = [];
 var delay = -2;
-var capturing = 0;
 
 var fogMap = [];
 var fogLayer = [];
@@ -65,6 +64,10 @@ var terrainCardOn = false;
 var structureMap = [];
 var capturing = 0; 
 var captureCounter; 
+var captureBar = [];
+var captureCard;
+var capturing = 0;
+var captureVal;
 
 var unitCard;
 var unitCardAttack;
@@ -127,7 +130,11 @@ function startGame() {
 	unitCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
 	unitCardSight = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "4");
 	
-	captureCounter = new component("900 32px", "Arial", "white", boardX-spaceSize*2 + 35, boardY-spaceSize*2 + 103, "text", "4");
+	for (var i = 0; i < 20; i++) {
+		captureBar[i] = new component(64, 10, "solidBlue", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none");
+	}
+	captureCounter = new component("900 32px", "Arial", "solidBlue", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", "4");
+	captureCard = new component(128, 320, "captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	
 	gameArea.start();
 }
@@ -293,7 +300,10 @@ function component(width, height, color, x, y, type, unit) {
 		
 		if (this.type == "text") {
 			ctx.font = this.width + " " + this.height;
-			ctx.fillStyle = color;
+			if (color == "solidBlue") 
+				ctx.fillStyle = "rgba(0, 78, 225, 1)";
+			else 
+				ctx.fillStyle = color;
 			ctx.fillText(this.text, this.x, this.y);
 		}
 		
@@ -302,6 +312,8 @@ function component(width, height, color, x, y, type, unit) {
 				ctx.fillStyle = "rgba(69, 125, 211, 0.5)";
 			else if (color == "fog") 
 				ctx.fillStyle = "rgba(89, 89, 89, 0.7)";
+			else if (color == "solidBlue") 
+				ctx.fillStyle = "rgba(0, 78, 225, 1)";
 			else 
 				ctx.fillStyle = "rgba(212, 210, 144, 0.5)";
             ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -388,8 +400,8 @@ function updateGameArea() {
 	if (capturing) {
 		if (frame % 7 == 0) {
 			if (capturing > 0) {
-				captureCounter.text = captureCounter.text+1;							
-				if (captureCounter.text == -10) {
+				captureCounter.text = captureCounter.text-1;							
+				if (captureCounter.text == Math.abs(captureVal)) {
 					capturing = -4;
 				}
 			}
@@ -397,7 +409,12 @@ function updateGameArea() {
 				capturing++;
 			}
 		}
+		captureCard.update();
 		captureCounter.update();
+		
+		for (var i = 0; i < captureBar.length-(20-Math.abs(captureCounter.text)); i++) {
+			captureBar[i].update();
+		}
 	}
 	//fogUpdate();
 	
@@ -522,6 +539,9 @@ function clicked(event) {
 		}
 
 		else if (entityLayer[x][y] > -1) {
+			if (board[x][y] > 3 && entityLayer[x][y] == selectedUnit) {
+				captureStructure(x,y);
+			}
 			clickedReset();
 		}
 		
@@ -660,9 +680,28 @@ function moveActual(x,y,given) {
 	}
 }
 
+/*known bugs
+-will only work with friendly
+-broken by spam clicking
+-not affected by unit health
+-if statment to change terrain wont work with enemy
+-TERRAIN CHANGED BY IF BUT IMAGE NOT
+*/
+
 function captureStructure(x,y) {
-	capturing = true;
-	captureCounter.text = structureMap[x][y];
+	capturing = 1;
+	captureCounter.text = Math.abs(structureMap[x][y]);
+	captureVal = structureMap[x][y] + 10;//*(temp/Math.abs(temp));
+	structureMap[x][y] = captureVal;
+	if (structureMap[x][y] >= 0) {
+		if (board[x][y] > 8) {
+			alert("fix capture structure");
+		}
+		else if (board[x][y] > 6) {
+		alert(board[x][y]);
+			board[x][y] = 3;
+		}
+	}
 }
 
 function moveOver() {
