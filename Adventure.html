@@ -69,6 +69,14 @@ var captureCard;
 var capturing = 0;
 var captureVal;
 
+var factoryCard;
+var factoryCardUnits = [];
+var factoryCardUnitBackgrounds = [];
+var factoryCardText = [];
+var factoryStatCard = [];
+var factoryUnitStats = [];
+var buildingUnit = false;
+
 var unitCard;
 var unitCardAttack;
 var unitCardDef;
@@ -76,12 +84,13 @@ var unitCardMove;
 var unitCardSight;
 var unitCardOn = 0;
 
-var infantry = {attack: 3, defense: 3, movement: 3, sight: 3};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2};
-var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4};
-var archer = {attack: 4, defense: 1, movement: 3, sight: 3};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", name: "Light Infantry"};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", name: "Heavy Infantry"};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", name: "Cavalry"};
+var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
 
-var units = [infantry, heavyInfantry, cavalry, archer];
+var units = [infantry, heavyInfantry, cavalry];
+//var units = [infantry, heavyInfantry, cavalry, archer];
 
 var movementHighlights = [];
 
@@ -112,13 +121,10 @@ function startGame() {
 		}
 	}
 	
-	newPlayerUnit(33, 49, "knight.png", 2, 5, 1);
-	newPlayerUnit(50, 50, "cavalry.png", 2, 2, 2);
-	newPlayerUnit(50, 50, "soldier.png", 4, 4, 0);
-	newPlayerUnit(50, 50, "soldier.png", 3, 3, 0);
-	//newPlayerUnit(50, 50, "archer.png", 1, 1, 3);
-	
-	//newEnemyUnit(50, 50, "soldier.png", 9, 9, 0);
+	newPlayerUnit(2, 5, 1);
+	newPlayerUnit(2, 2, 2);
+	newPlayerUnit(4, 4, 0);
+	newPlayerUnit(3, 3, 0);
 	
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
@@ -136,21 +142,28 @@ function startGame() {
 	captureCounter = new component("900 32px", "Arial", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", "4");
 	captureCard = new component(128, 320, "captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	
+	factoryCard = new component(spaceSize*9, spaceSize*8, "captureCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
+	for (var i = 0; i < units.length; i++) {
+		factoryCardUnits[i] = new component(50, 50, units[i].image, toPixel(3,0) + ((spaceSize-50)/2), toPixel(i*2 + 3,0) + ((spaceSize-50)/2), "player", units[i]);
+		factoryCardUnitBackgrounds[i] = new component(64, 64, "factoryCardUnitBackground.png", toPixel(3,0), toPixel(i*2 + 3,0), "none", "none");
+		factoryCardText[i] = new component("900 32px", "Arial", "black", toPixel(4,10), toPixel(i*2 + 3,42), "text", units[i].name);
+		factoryStatCard[i] = new component(256, 64, "factoryStatCard.png", toPixel(3,0), toPixel(i*2 + 4,0), "none", "none");
+		factoryUnitStats[i] = [];
+		factoryUnitStats[i][0] = new component("900 32px", "Arial", "white", toPixel(3,35), toPixel(i*2 + 4,45), "text", units[i].attack);
+		factoryUnitStats[i][1] = new component("900 32px", "Arial", "white", toPixel(4,30), toPixel(i*2 + 4,45), "text", units[i].movement);
+		factoryUnitStats[i][2] = new component("900 32px", "Arial", "white", toPixel(5,25), toPixel(i*2 + 4,45), "text", units[i].defense);
+		factoryUnitStats[i][3] = new component("900 32px", "Arial", "white", toPixel(6,27), toPixel(i*2 + 4,45), "text", units[i].sight);
+	}
+	
 	gameArea.start();
 }
 
 
-function newPlayerUnit (sizeX, sizeY, img, xCord, yCord, unit) {
-	playerUnits[playerUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord,globalOffsetX) + ((spaceSize-sizeX)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-sizeY)/2), "player", units[unit]);
+function newPlayerUnit (xCord, yCord, unit) {
+	playerUnits[playerUnits.length] = new component(50, 50, units[unit].image, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "player", units[unit]);
 	playerHP[playerHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
 	entityLayer[xCord][yCord] = playerUnits.length-1;
 }
-
-function newEnemyUnit (sizeX, sizeY, img, xCord, yCord, unit) {
-	enemyUnits[enemyUnits.length] = new component(sizeX, sizeY, img, toPixel(xCord,globalOffsetX) + ((spaceSize-sizeX)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-sizeY)/2), "enemy", units[unit]);
-	enemyHP[enemyHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
-	entityLayer[xCord][yCord] = enemyUnits.length-1;
-} 
 
 function mapTerrain() {
 	for (var i = 0; i < boardRows; i++) {
@@ -427,6 +440,19 @@ function updateGameArea() {
 		}
 	}
 	
+	if (buildingUnit) {
+		factoryCard.update();
+		for (var i = 0; i < factoryCardUnits.length; i++) {
+			factoryCardUnitBackgrounds[i].update();
+			factoryCardUnits[i].update();
+			factoryCardText[i].update();
+			factoryStatCard[i].update();
+			for (var j = 0; j < factoryUnitStats[i].length; j++) {
+				factoryUnitStats[i][j].update();
+			}
+		}
+	}
+	
 	//fogUpdate();
 	
 	if (delay > 0) {
@@ -514,12 +540,11 @@ function handleInput() {
 }
 
 function clicked(event) {
-	if (delay < 0 && !capturing) {
-
+	if (delay < 0 && !capturing && !buildingUnit) {
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
+		
 		if (phase == 0) {
-			
 			if (entityLayer[x][y] > -1) {
 				if (terrainCardSpace) {
 					movementHighlights = [];
@@ -534,7 +559,9 @@ function clicked(event) {
 				unitCardOn = 1;
 				phase++;
 			}
-			
+			else if (board[x][y] == 5) {
+				buildingUnit = true;
+			}
 			else {
 				if (terrainCardSpace) {
 					movementHighlights = [];
