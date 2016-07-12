@@ -75,7 +75,17 @@ var factoryCardUnitBackgrounds = [];
 var factoryCardText = [];
 var factoryStatCard = [];
 var factoryUnitStats = [];
+var factoryX;
+var factoryY;
+var toBuild;
 var buildingUnit = false;
+
+var gold;
+var goldText;
+var income; 
+var incomeText;
+
+var unitMoved = [];
 
 var unitCard;
 var unitCardAttack;
@@ -84,9 +94,9 @@ var unitCardMove;
 var unitCardSight;
 var unitCardOn = 0;
 
-var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", name: "Light Infantry"};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", name: "Heavy Infantry"};
-var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", name: "Cavalry"};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", name: "Light Infantry", cost: 300};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", name: "Heavy Infantry", cost: 600};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", name: "Cavalry", cost: 1000};
 var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
 
 var units = [infantry, heavyInfantry, cavalry];
@@ -109,6 +119,8 @@ function startGame() {
 	else 
 		boardY = boardCols * spaceSize;
 
+	gold = 500;
+	
 	mapTerrain();
 	mapStructures(); 
 	
@@ -127,33 +139,36 @@ function startGame() {
 	newPlayerUnit(3, 3, 0);
 	
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
-	terrainCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
-	terrainCardDef = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "3");
+	terrainCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
+	terrainCardDef = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "3");
 	
 	unitCard = new component(128, 128, "unitCard.png", boardX-spaceSize*2, boardY-spaceSize*2, "none", "none");
-	unitCardAttack = new component("900 32px", "Arial", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 48, "text", "1");
-	unitCardDef = new component("900 32px", "Arial", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 103, "text", "2");
-	unitCardMove = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
-	unitCardSight = new component("900 32px", "Arial", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "4");
+	unitCardAttack = new component("900 32px", "Courier New", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 48, "text", "1");
+	unitCardDef = new component("900 32px", "Courier New", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 103, "text", "2");
+	unitCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
+	unitCardSight = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "4");
 	
 	for (var i = 0; i < 20; i++) {
 		captureBar[i] = new component(64, 10, "solidGrey", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none");
 	}
-	captureCounter = new component("900 32px", "Arial", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", "4");
+	captureCounter = new component("900 32px", "Courier New", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", "4");
 	captureCard = new component(128, 320, "captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	
-	factoryCard = new component(spaceSize*9, spaceSize*8, "captureCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
+	factoryCard = new component(spaceSize*9, spaceSize*8, "factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
+	goldText = new component("900 32px", "Courier New", "black", toPixel(3,0), toPixel(2,45), "text", "Gold: " + gold);
+	incomeText = new component("900 32px", "Courier New", "black", toPixel(6,0), toPixel(2,45), "text", income);
 	for (var i = 0; i < units.length; i++) {
 		factoryCardUnits[i] = new component(50, 50, units[i].image, toPixel(3,0) + ((spaceSize-50)/2), toPixel(i*2 + 3,0) + ((spaceSize-50)/2), "player", units[i]);
 		factoryCardUnitBackgrounds[i] = new component(64, 64, "factoryCardUnitBackground.png", toPixel(3,0), toPixel(i*2 + 3,0), "none", "none");
-		factoryCardText[i] = new component("900 32px", "Arial", "black", toPixel(4,10), toPixel(i*2 + 3,42), "text", units[i].name);
+		factoryCardText[i] = new component("900 32px", "Courier New", "black", toPixel(4,10), toPixel(i*2 + 3,42), "text", units[i].name);
 		factoryStatCard[i] = new component(256, 64, "factoryStatCard.png", toPixel(3,0), toPixel(i*2 + 4,0), "none", "none");
 		factoryUnitStats[i] = [];
-		factoryUnitStats[i][0] = new component("900 32px", "Arial", "white", toPixel(3,35), toPixel(i*2 + 4,45), "text", units[i].attack);
-		factoryUnitStats[i][1] = new component("900 32px", "Arial", "white", toPixel(4,30), toPixel(i*2 + 4,45), "text", units[i].movement);
-		factoryUnitStats[i][2] = new component("900 32px", "Arial", "white", toPixel(5,25), toPixel(i*2 + 4,45), "text", units[i].defense);
-		factoryUnitStats[i][3] = new component("900 32px", "Arial", "white", toPixel(6,27), toPixel(i*2 + 4,45), "text", units[i].sight);
+		factoryUnitStats[i][0] = new component("900 32px", "Courier New", "white", toPixel(3,35), toPixel(i*2 + 4,45), "text", units[i].attack);
+		factoryUnitStats[i][1] = new component("900 32px", "Courier New", "white", toPixel(4,30), toPixel(i*2 + 4,45), "text", units[i].movement);
+		factoryUnitStats[i][2] = new component("900 32px", "Courier New", "white", toPixel(5,25), toPixel(i*2 + 4,45), "text", units[i].defense);
+		factoryUnitStats[i][3] = new component("900 32px", "Courier New", "white", toPixel(6,27), toPixel(i*2 + 4,45), "text", units[i].sight);
 	}
+	refreshIncome();
 	
 	gameArea.start();
 }
@@ -161,7 +176,8 @@ function startGame() {
 
 function newPlayerUnit (xCord, yCord, unit) {
 	playerUnits[playerUnits.length] = new component(50, 50, units[unit].image, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "player", units[unit]);
-	playerHP[playerHP.length] = new component("900 20px", "Arial", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
+	unitMoved[playerUnits.length-1] = 0;
+	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
 	entityLayer[xCord][yCord] = playerUnits.length-1;
 }
 
@@ -451,6 +467,8 @@ function updateGameArea() {
 				factoryUnitStats[i][j].update();
 			}
 		}
+		goldText.update();
+		incomeText.update();
 	}
 	
 	//fogUpdate();
@@ -540,11 +558,34 @@ function handleInput() {
 }
 
 function clicked(event) {
-	if (delay < 0 && !capturing && !buildingUnit) {
+	if (delay < 0 && !capturing){
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
 		
-		if (phase == 0) {
+		if (buildingUnit) {
+			if (x < 2 || y < 2 || y > 9 || x > 10){
+				buildingUnit = false;
+			}
+			else if (x >= 3 && x <= 7 && y >= 3 && y <= 8) {
+				if (y < 5) {
+					toBuild = 0;
+				}
+				else if (y < 7) {
+					toBuild = 1;
+				}
+				else if (y < 9) {
+					toBuild = 2;
+				}
+				
+				if (gold >= units[toBuild].cost) {
+					newPlayerUnit(factoryX, factoryY, toBuild);
+					unitMoved[unitMoved.length-1] = 1;
+					gold -= units[toBuild].cost;
+					buildingUnit = false;
+				}
+			}
+		}
+		else if (phase == 0 && !unitMoved[entityLayer[x][y]]) {
 			if (entityLayer[x][y] > -1) {
 				if (terrainCardSpace) {
 					movementHighlights = [];
@@ -560,13 +601,14 @@ function clicked(event) {
 				phase++;
 			}
 			else if (board[x][y] == 5) {
+				factoryX = x;
+				factoryY = y;
 				buildingUnit = true;
 			}
 			else {
 				if (terrainCardSpace) {
 					movementHighlights = [];
 				}
-				
 				terrainCardSpace = spaces[x][y];
 				movementHighlights[0] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
 				terrainCardOn = true;
@@ -578,6 +620,8 @@ function clicked(event) {
 		else if (entityLayer[x][y] > -1) {
 			if (board[x][y] > 6 && entityLayer[x][y] == selectedUnit) {
 				captureStructure(x,y);
+				unitMoved[selectedUnit] = 1;
+				refreshUnitMoved();
 			}
 			clickedReset();
 		}
@@ -598,11 +642,13 @@ function clicked(event) {
 				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
 				path = [];
 				clearMoveable();
-				unitCardOn = 0;		
+				unitCardOn = 0;
 				executeMoves();
 				if(structureMap[x][y] < 0) {
 					captureStructure(x,y);
 				}
+				unitMoved[selectedUnit] = 1;
+				refreshUnitMoved();
 			}
 			else if (spaces[x][y].moveable) {
 				phase = 1;
@@ -624,6 +670,39 @@ function clickedReset() {
 	path = [];
 	phase = 0
 	clicked(event);
+}
+
+function refreshUnitMoved () {
+	var allMoved = true;
+	for (var i = 0; i < unitMoved.length; i++) {
+		if (!unitMoved[i]) {
+			allMoved = false;
+		}
+	}
+	
+	if (allMoved) {
+		for (var i = 0; i < unitMoved.length; i++) {
+			unitMoved[i] = 0;
+		}
+		endTurn();
+	}
+}
+
+function endTurn() {
+	refreshIncome();
+	gold += income;
+	goldText.text = "Gold: " + gold;
+}
+
+function refreshIncome() {
+	income = 0;
+	for (var i = 0; i < boardRows; i++) {
+		for (var j = 0; j < boardCols; j++) {
+				if (board[i][j] > 3 && board[i][j] < 7)
+					income+=100;
+		}
+	}
+	incomeText.text = "Income: " + income;
 }
 
 function makeMoves (x,y,given) {
@@ -729,7 +808,7 @@ function captureStructure(x,y) {
 		for (var i = 0; i < 20; i++) {
 			captureBar[i] = new component(64, 10, "solidRed", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none"); //This is an awful clumsy way to do this but had problems w/ edit
 		}
-		captureCounter = new component("900 32px", "Arial", "solidRed", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
+		captureCounter = new component("900 32px", "Courier New", "solidRed", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
 		//captureCard = new component(128, 320, "captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	}
 	
