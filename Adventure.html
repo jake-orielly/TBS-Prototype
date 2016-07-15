@@ -30,10 +30,6 @@ var currY;
 var path = [];
 var pathX;
 var pathY;
-var playerUnits = [];
-var playerHP = [];
-var enemyUnits = [];
-var enemyHP = [];
 var moves = [];
 var selectedUnit;
 var entityLayer = [];
@@ -44,6 +40,14 @@ var globalOffsetX = 0;
 var globalOffsetY = 0;
 var moveParams = [];
 var delay = -2;
+
+var playerUnits = [];
+var playerHP = [];
+var unitMoved = [];
+
+var enemyUnits = [];
+var enemyHP = [];
+var enemyUnitMoved = [];
 
 var turnNumber;
 var turnText;
@@ -91,8 +95,6 @@ var goldText;
 var income; 
 var incomeText;
 
-var unitMoved = [];
-
 var unitCard;
 var unitCardAttack;
 var unitCardDef;
@@ -100,9 +102,9 @@ var unitCardMove;
 var unitCardSight;
 var unitCardOn = 0;
 
-var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", name: "Light Infantry", cost: 300};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", movedImage: "knightMoved.png", name: "Heavy Infantry", cost: 600};
-var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", movedImage: "cavalryMoved.png", name: "Cavalry", cost: 1000};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", enemyImage: "soldierEnemy.png", name: "Light Infantry", cost: 300};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", movedImage: "knightMoved.png", enemyImage: "knightEnemy.png", name: "Heavy Infantry", cost: 600};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", movedImage: "cavalryMoved.png", enemyImage: "cavalryEnemy.png", name: "Cavalry", cost: 1000};
 var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
 
 var units = [infantry, heavyInfantry, cavalry];
@@ -141,10 +143,15 @@ function startGame() {
 		}
 	}
 	
-	newPlayerUnit(2, 5, 1);
+	newPlayerUnit(2, 4, 1);
 	newPlayerUnit(2, 2, 2);
 	newPlayerUnit(4, 4, 0);
 	newPlayerUnit(3, 3, 0);
+	
+	newEnemyUnit(10, 4, 1);
+	newEnemyUnit(10, 2, 2);
+	newEnemyUnit(8, 4, 0);
+	newEnemyUnit(9, 3, 0);
 	
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
@@ -191,6 +198,13 @@ function newPlayerUnit (xCord, yCord, unit) {
 	unitMoved[playerUnits.length-1] = 0;
 	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
 	entityLayer[xCord][yCord] = playerUnits.length-1;
+}
+
+function newEnemyUnit (xCord, yCord, unit) {
+	enemyUnits[enemyUnits.length] = new component(50, 50, units[unit].enemyImage, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "enemy", units[unit]);
+	enemyUnitMoved[enemyUnits.length-1] = 0;
+	enemyHP[enemyHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
+	entityLayer[xCord][yCord] = ((enemyUnits.length-1) * -1)-2;
 }
 
 function mapTerrain() {
@@ -408,9 +422,6 @@ function updateGameArea() {
 	for (var i = 0; i < playerUnits.length; i++) {
 			playerUnits[i].newPos();
 			playerUnits[i].update();
-	}
-	
-	for (var i = 0; i < playerHP.length; i++) {
 			playerHP[i].newPos();
 			playerHP[i].update();
 	}
@@ -418,13 +429,10 @@ function updateGameArea() {
 	for (var i = 0; i < enemyUnits.length; i++) {
 			enemyUnits[i].newPos();
 			enemyUnits[i].update();
-	}
-	
-	for (var i = 0; i < enemyHP.length; i++) {
 			enemyHP[i].newPos();
 			enemyHP[i].update();
 	}
-	
+
 	if (path != []) {
 		for (var i = 0; i < path.length; i++) {
 			path[i].newPos();
@@ -635,7 +643,18 @@ function clicked(event) {
 				unitCardMove.text = playerUnits[entityLayer[x][y]].stats.movement;
 				unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
 				unitCardOn = 1;
+				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
 				phase++;
+			}
+			else if (entityLayer[x][y] < -1) {
+				movementHighlights = [];
+				terrainCardOn = false;
+				unitCardAttack.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.attack;
+				unitCardDef.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.defense;
+				unitCardMove.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.movement;
+				unitCardSight.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.sight;
+				unitCardOn = 1;
+				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
 			}
 			else if (board[x][y] == 5) {
 				factoryX = x;
