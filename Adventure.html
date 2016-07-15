@@ -45,6 +45,12 @@ var globalOffsetY = 0;
 var moveParams = [];
 var delay = -2;
 
+var turnNumber;
+var turnText;
+var turnCard;
+var turnCardOn = false;
+var turnOver = 0; 
+
 var fogMap = [];
 var fogLayer = [];
 
@@ -94,9 +100,9 @@ var unitCardMove;
 var unitCardSight;
 var unitCardOn = 0;
 
-var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", name: "Light Infantry", cost: 300};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", name: "Heavy Infantry", cost: 600};
-var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", name: "Cavalry", cost: 1000};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", name: "Light Infantry", cost: 300};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", movedImage: "knightMoved.png", name: "Heavy Infantry", cost: 600};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", movedImage: "cavalryMoved.png", name: "Cavalry", cost: 1000};
 var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
 
 var units = [infantry, heavyInfantry, cavalry];
@@ -108,6 +114,8 @@ var frame;
 
 function startGame() {
 	frame = 0; 
+	turnNumber = 1;
+	gold = 500;
 	
 	if (boardRows * spaceSize > window.innerWidth) 
 		boardX = parseInt(window.innerWidth/spaceSize)*spaceSize;
@@ -119,7 +127,7 @@ function startGame() {
 	else 
 		boardY = boardCols * spaceSize;
 
-	gold = 500;
+	
 	
 	mapTerrain();
 	mapStructures(); 
@@ -156,7 +164,7 @@ function startGame() {
 	
 	factoryCard = new component(spaceSize*9, spaceSize*8, "factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
 	goldText = new component("900 32px", "Courier New", "black", toPixel(3,0), toPixel(2,45), "text", "Gold: " + gold);
-	incomeText = new component("900 32px", "Courier New", "black", toPixel(6,0), toPixel(2,45), "text", income);
+	incomeText = new component("900 32px", "Courier New", "black", toPixel(7,0), toPixel(2,45), "text", income);
 	for (var i = 0; i < units.length; i++) {
 		factoryCardUnits[i] = new component(50, 50, units[i].image, toPixel(3,0) + ((spaceSize-50)/2), toPixel(i*2 + 3,0) + ((spaceSize-50)/2), "player", units[i]);
 		factoryCardUnitBackgrounds[i] = new component(64, 64, "factoryCardUnitBackground.png", toPixel(3,0), toPixel(i*2 + 3,0), "none", "none");
@@ -168,6 +176,10 @@ function startGame() {
 		factoryUnitStats[i][2] = new component("900 32px", "Courier New", "white", toPixel(5,25), toPixel(i*2 + 4,45), "text", units[i].defense);
 		factoryUnitStats[i][3] = new component("900 32px", "Courier New", "white", toPixel(6,27), toPixel(i*2 + 4,45), "text", units[i].sight);
 	}
+	
+	turnText = new component("bold 68px", "Courier New", "black", (boardCols-2.9)*spaceSize/2, boardRows*spaceSize/2, "text", "DAY " + turnNumber);
+	turnCard = new component(spaceSize*5, spaceSize*2, "turnCard.png", (boardCols-4.8)*spaceSize/2, (boardRows-2.6)*spaceSize/2, "none", "none");
+	
 	refreshIncome();
 	
 	gameArea.start();
@@ -471,6 +483,29 @@ function updateGameArea() {
 		incomeText.update();
 	}
 	
+	if (delay < 0 && turnOver) {
+		if (turnOver == 1) {
+			delay = 16;
+			turnOver = 2;
+		}
+		else if (turnOver == 2) {
+			endTurn();
+			delay = 50;
+			turnOver = 3;
+		}
+		else {
+			turnCardOn = false;
+			turnNumber++;
+			turnText.text = "DAY " + turnNumber;
+			turnOver = 0;
+		}
+	}
+	
+	if (turnCardOn) {
+		turnCard.update();
+		turnText.update();
+	}	
+
 	//fogUpdate();
 	
 	if (delay > 0) {
@@ -581,7 +616,9 @@ function clicked(event) {
 					newPlayerUnit(factoryX, factoryY, toBuild);
 					unitMoved[unitMoved.length-1] = 1;
 					gold -= units[toBuild].cost;
+					goldText.text = "Gold: " + gold;
 					buildingUnit = false;
+					playerUnits[playerUnits.length-1].image.src = playerUnits[playerUnits.length-1].text.movedImage;
 				}
 			}
 		}
@@ -684,11 +721,16 @@ function refreshUnitMoved () {
 		for (var i = 0; i < unitMoved.length; i++) {
 			unitMoved[i] = 0;
 		}
-		endTurn();
+		turnOver = 1;
 	}
 }
 
 function endTurn() {
+	for (var i = 0; i < unitMoved.length; i++) {
+		playerUnits[i].image.src = playerUnits[i].stats.image;
+	}
+	
+	turnCardOn = true;
 	refreshIncome();
 	gold += income;
 	goldText.text = "Gold: " + gold;
@@ -727,30 +769,6 @@ function makeMoves (x,y,given) {
 	for (var i = 0; i < moves.length-1; i++) {
 		drawPath(i);
 	}
-}
-
-function arrayCompare (array1, array2) {
-	if (!array1 || !array2) {
-		return false;
-	}
-	
-	if (array1.length != array2.length) {
-		return false
-	}
-	
-	for (var i = 0; i < array1.length; i++) {
-		if (array1[i] instanceof Array && array2[i] instanceof Array) {
-			if (!(arrayCompare(array1[i],array2[i]))) {
-				return false;
-			}
-		}
-		
-		else if (!(array1[i] == array2[i])) {
-			return false;
-		}
-	}
-	
-	return true;
 }
 
 function drawPath(i) {
@@ -829,6 +847,8 @@ function moveOver() {
 	moves = [];
 	phase = 0;
 	delay = -2;
+	playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage;
+	//refreshUnitImages();
 	//alert(structureMap[moves[0][0]][moves[0][1]]);
 }
 
@@ -895,6 +915,30 @@ function clearMoveable() {
 			spaces[i][j].moveable = false;
 		}
 	}
+}
+
+function arrayCompare (array1, array2) {
+	if (!array1 || !array2) {
+		return false;
+	}
+	
+	if (array1.length != array2.length) {
+		return false
+	}
+	
+	for (var i = 0; i < array1.length; i++) {
+		if (array1[i] instanceof Array && array2[i] instanceof Array) {
+			if (!(arrayCompare(array1[i],array2[i]))) {
+				return false;
+			}
+		}
+		
+		else if (!(array1[i] == array2[i])) {
+			return false;
+		}
+	}
+	
+	return true;
 }
 
 function getImage(x,y,category) {
