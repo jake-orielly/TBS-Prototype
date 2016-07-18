@@ -22,9 +22,13 @@ var boardY;
 var phase = 0;
 var board = [];
 var moveableSpaces = [];
-var moveableGrid = [];
-var spaceOffset = [[1,0],[-1,0],[0,1],[0,-1]];
 var newMoveable;
+var moveableGrid = [];
+var attackableSpaces = [];
+var newAttackable;
+var attackHighlights = [];
+var attackCheck = [];
+var spaceOffset = [[1,0],[-1,0],[0,1],[0,-1]];
 var currX;
 var currY;
 var path = [];
@@ -33,13 +37,14 @@ var pathY;
 var moves = [];
 var selectedUnit;
 var entityLayer = [];
+var moveParams = [];
+var delay = -2;
+
 var globalSpeedX = 0;
 var globalSpeedY = 0;
 var scrollSpeed = 4;
 var globalOffsetX = 0;
 var globalOffsetY = 0;
-var moveParams = [];
-var delay = -2;
 
 var playerUnits = [];
 var playerHP = [];
@@ -48,6 +53,10 @@ var unitMoved = [];
 var enemyUnits = [];
 var enemyHP = [];
 var enemyUnitMoved = [];
+var currentEnemy;
+
+var attacking = 0;
+var hpToSet = [];
 
 var turnNumber;
 var turnText;
@@ -62,8 +71,8 @@ var terrainImg = ["grass.png", "trees.png", "mountain.png","river.png",
 "friendlyCastle.png","friendlyBarracks.png","friendlyVillage.png",
 "barracks.png","village.png", 
 "enemyCastle.png", "enemyBarracks.png","enemyVillage.png"];
-var terrainCost = [1,2,3,50,1,1,1,1,1,1,1,1];
-var terrainDef = [1,2,3,1,4,3,2,3,2,4,3,2];
+var terrainCost = [1,2,3,"X",1,1,1,1,1,1,1,1];
+var terrainDef = [1,2,3,"X",4,3,2,3,2,4,3,2];
 
 var terrainCard;
 var terrainCardMove;
@@ -143,15 +152,15 @@ function startGame() {
 		}
 	}
 	
-	newPlayerUnit(2, 4, 1);
-	newPlayerUnit(2, 2, 2);
+	//newPlayerUnit(2, 4, 1);
+	//newPlayerUnit(2, 2, 2);
 	newPlayerUnit(4, 4, 0);
-	newPlayerUnit(3, 3, 0);
+	//newPlayerUnit(3, 3, 0);
 	
 	newEnemyUnit(10, 4, 1);
-	newEnemyUnit(10, 2, 2);
-	newEnemyUnit(8, 4, 0);
+	newEnemyUnit(6, 4, 0);
 	newEnemyUnit(9, 3, 0);
+	newEnemyUnit(10, 2, 2);
 	
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
@@ -196,7 +205,7 @@ function startGame() {
 function newPlayerUnit (xCord, yCord, unit) {
 	playerUnits[playerUnits.length] = new component(50, 50, units[unit].image, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "player", units[unit]);
 	unitMoved[playerUnits.length-1] = 0;
-	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
+	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "7");
 	entityLayer[xCord][yCord] = playerUnits.length-1;
 }
 
@@ -347,7 +356,7 @@ function component(width, height, color, x, y, type, unit) {
     this.y = y;
 	this.image = new Image();
 	this.image.src = color;
-    this.moveable = false;
+    this.moveable = 0;
 	this.text = unit
 	
     this.update = function() {
@@ -369,6 +378,8 @@ function component(width, height, color, x, y, type, unit) {
 		else if (this.type == "square") {
 			if (color == "blue")
 				ctx.fillStyle = "rgba(69, 125, 211, 0.5)";
+			else if (color == "red")
+				ctx.fillStyle = "rgba(209, 21, 30, 0.5)";
 			else if (color == "fog") 
 				ctx.fillStyle = "rgba(89, 89, 89, 0.7)";
 			else if (color == "solidBlue") 
@@ -419,18 +430,25 @@ function updateGameArea() {
 		}
 	}
 	
+	for (var i = 0; i < attackHighlights.length; i++) {
+		attackHighlights[i].newPos();
+		attackHighlights[i].update();
+	}
+	
 	for (var i = 0; i < playerUnits.length; i++) {
-			playerUnits[i].newPos();
-			playerUnits[i].update();
-			playerHP[i].newPos();
-			playerHP[i].update();
+		playerUnits[i].newPos();
+		playerUnits[i].update();
+		playerHP[i].newPos();
+		playerHP[i].update();
 	}
 	
 	for (var i = 0; i < enemyUnits.length; i++) {
+		if (enemyHP[i].text > 0) {
 			enemyUnits[i].newPos();
 			enemyUnits[i].update();
 			enemyHP[i].newPos();
 			enemyHP[i].update();
+		}
 	}
 
 	if (path != []) {
@@ -491,7 +509,7 @@ function updateGameArea() {
 		incomeText.update();
 	}
 	
-	if (delay < 0 && turnOver) {
+	if (delay < 0 && turnOver && !capturing) {
 		if (turnOver == 1) {
 			delay = 16;
 			turnOver = 2;
@@ -506,6 +524,25 @@ function updateGameArea() {
 			turnNumber++;
 			turnText.text = "DAY " + turnNumber;
 			turnOver = 0;
+			enemyTurn();
+		}
+	}
+	
+	if (delay < 0 && !arrayCompare(hpToSet,[])) {
+		hpToSet[0].text -= 1;
+		delay = 5;
+		if (hpToSet[0].text == hpToSet[1]) {
+			attacking = 0;
+			delay = -2;
+			if (hpToSet[1] = 0) {
+				moves = [[toSpace(enemyUnits[hpToSet[2]].x,globalOffsetX),toSpace(enemyUnits[hpToSet[2]].y,globalOffsetY)],[toSpace(playerUnits[selectedUnit].x,globalOffsetX),toSpace(playerUnits[selectedUnit].y,globalOffsetY)]];
+				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+				moveParams = [toSpace(playerUnits[selectedUnit].x,globalOffsetX),toSpace(playerUnits[selectedUnit].y,globalOffsetY),playerUnits[selectedUnit],moves.length-1];
+				executeMoves();
+				unitMoved[selectedUnit] = 1;
+				refreshUnitMoved();
+			}
+			hpToSet = [];
 		}
 	}
 	
@@ -604,7 +641,6 @@ function clicked(event) {
 	if (delay < 0 && !capturing){
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
-		
 		if (buildingUnit) {
 			if (x < 2 || y < 2 || y > 9 || x > 10){
 				buildingUnit = false;
@@ -674,17 +710,27 @@ function clicked(event) {
 		}
 
 		else if (entityLayer[x][y] > -1) {
-			if (board[x][y] > 6 && entityLayer[x][y] == selectedUnit) {
+			if (board[x][y] > 6 && entityLayer[x][y] == selectedUnit && !unitMoved[selectedUnit]) {
 				captureStructure(x,y);
+				playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage;
 				unitMoved[selectedUnit] = 1;
 				refreshUnitMoved();
+			}
+			else if (entityLayer[x][y] == selectedUnit && !unitMoved[selectedUnit]) {
+				alert(1);
 			}
 			clickedReset();
 		}
 		
 		else if (phase == 1) {
-			if (spaces[x][y].moveable) {
+			if (spaces[x][y].moveable == 1) {
 				makeMoves(x,y,playerUnits[selectedUnit]);
+				phase++;
+			}
+			else if (isAttackable(x,y)){
+				var temp = isAttackable(x,y).destination;
+				makeMoves(temp.x,temp.y,playerUnits[selectedUnit]);
+				attackCheck = [x,y];
 				phase++;
 			}
 			else {
@@ -706,17 +752,51 @@ function clicked(event) {
 				unitMoved[selectedUnit] = 1;
 				refreshUnitMoved();
 			}
-			else if (spaces[x][y].moveable) {
+			else if (spaces[x][y].moveable == 1) {
 				phase = 1;
 				moves = [];
 				path = [];
 				clicked(event);
+			}
+			else if (isAttackable(x,y) //space is attackable
+					 && moves[0][0] == isAttackable(x,y).destination.x
+					 && moves[0][1] == isAttackable(x,y).destination.y //and dest matches
+					 && arrayCompare([x,y],attackCheck)) { //and clicked  same space
+				makeAttack(entityLayer[x][y],selectedUnit);
+				if (parseInt(enemyHP[(entityLayer[x][y]+2)*-1].text) <= 0) {
+					killUnit(x,y);
+				}
+				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
+				path = [];
+				clearMoveable();
+				unitCardOn = 0;
+				attacking = 1;
+				executeMoves();
 			}
 			else {
 				clickedReset();
 			}
 		}
 	}
+}
+
+function makeAttack(tar, atk) {
+	var target = tar;
+	if (target < -1) {
+		target = (target+2)*-1;
+	}
+	var attacker = playerUnits[atk].stats;
+	var total = parseInt(enemyHP[target].text)-attacker.attack;
+	hpToSet = [enemyHP[target], total, target];
+}
+
+function killUnit(x,y) {
+	var unit = entityLayer[x][y];
+	if (unit < -1) 
+		unit = (unit+2)*-1;
+	
+	entityLayer[x][y] = -1;
 }
 
 function clickedReset() {
@@ -826,14 +906,33 @@ function executeMoves () {
 function moveActual(x,y,given) {
 	given.x = toPixel(x,globalOffsetX) + ((spaceSize-given.width)/2);
 	given.y = toPixel(y,globalOffsetY) + ((spaceSize-given.height)/2);
-	playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
-	playerHP[selectedUnit].y = toPixel(y,globalOffsetY) + 57;
+	if (given.type == "player") {
+		playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
+		playerHP[selectedUnit].y = toPixel(y,globalOffsetY) + 57;
+	}
+	else {
+		enemyHP[currentEnemy].x = toPixel(x,globalOffsetX) + 32;
+		enemyHP[currentEnemy].y = toPixel(y,globalOffsetY) + 57;
+	}
+}
+//only works for last one
+function enemyTurn () {
+	var curr;
+	for (var i = 0; i < enemyUnits.length; i++) {
+		curr = enemyUnits[i];
+		currentEnemy = i;
+		moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]];
+		entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+		moveParams = [toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY),curr,moves.length-1];
+		executeMoves();
+	}
 }
 
 /*known bugs
 -will only work with friendly
 -not affected by unit health
 -if statment to change terrain wont work with enemy
+-hp wont regen
 */
 
 function captureStructure(x,y) {
@@ -866,9 +965,8 @@ function moveOver() {
 	moves = [];
 	phase = 0;
 	delay = -2;
-	playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage;
-	//refreshUnitImages();
-	//alert(structureMap[moves[0][0]][moves[0][1]]);
+	if (!attacking)
+		playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage;
 }
 
 function highlightMoveable(x, y) {
@@ -877,11 +975,15 @@ function highlightMoveable(x, y) {
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
 			if (moveableGrid[i][j] > -1 && !(i == x && j == y)) {
-				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "blue", toPixel(i,globalOffsetX), toPixel(j,globalOffsetY), "square", "none");
-				spaces[i][j].moveable = true;
+				if (entityLayer[i][j] > -2) {
+					movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "blue", toPixel(i,globalOffsetX), toPixel(j,globalOffsetY), "square", "none");
+					spaces[i][j].moveable = 1;
+				}
 			}
 		}
 	}
+	
+	highlightAttackable();
 }
 
 function getMoveable(givenX,givenY) {
@@ -899,13 +1001,58 @@ function expandMoveable() {
 				currX = moveableSpaces[i].x + spaceOffset[k][0];
 				currY = moveableSpaces[i].y + spaceOffset[k][1];
 				if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space being checked is on the board
-					&& moveableSpaces[i].movement - terrainCost[board[currX][currY]] >= 0){
+					&& moveableSpaces[i].movement - terrainCost[board[currX][currY]] >= 0
+					&& board[currX][currY] != 3 //space is not a river
+					&& entityLayer[currX][currY] > -2){ //space is not an enemy
 					newMoveable = {movement: moveableSpaces[i].movement - terrainCost[board[currX][currY]], x: currX, y: currY};
 					moveableSpaces[moveableSpaces.length] = newMoveable;
 				}
 			}
 		}
 	}
+}
+
+function getAttackable() {
+	for (var i = 0; i < moveableSpaces.length; i++) {
+		for (var k = 0; k < spaceOffset.length; k++){
+			currX = moveableSpaces[i].x + spaceOffset[k][0];
+			currY = moveableSpaces[i].y + spaceOffset[k][1];
+			var found = false;
+			var currAtk;
+			
+			if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //space is on board
+				&& entityLayer[currX][currY] < -1) {
+				newAttackable = {destination: moveableSpaces[i], x: currX, y: currY};
+				for (var l = 0; l < attackableSpaces.length; l++) {
+					currAtk = attackableSpaces[l];
+					if (currAtk.x == currX && currAtk.y == currY) {//we've found the attacking space already in array
+						found = true;
+						if (newAttackable.destination.movement > currAtk.destination.movement)  //move cost is less
+							attackableSpaces[l] = newAttackable;
+					}
+				}
+				if (!found) {//not found 
+					attackableSpaces[attackableSpaces.length] = newAttackable; //add it
+				}
+			}
+		}
+	}
+}
+
+function highlightAttackable() {
+	getAttackable();
+	for (var i = 0; i < attackableSpaces.length; i++) {
+		attackHighlights[attackHighlights.length] = new component(spaceSize, spaceSize, "red", toPixel(attackableSpaces[i].x,globalOffsetX), toPixel(attackableSpaces[i].y,globalOffsetY), "square", "none");
+	}
+}
+
+function isAttackable(givenX, givenY) {
+	for (var i = 0; i < attackableSpaces.length; i++) {
+		if (attackableSpaces[i].x == givenX && attackableSpaces[i].y == givenY) {
+			return attackableSpaces[i];
+		}
+	}
+	return false;
 }
 
 function generateGrid() {
@@ -931,9 +1078,11 @@ function clearMoveable() {
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
 			movementHighlights = [];
-			spaces[i][j].moveable = false;
+			spaces[i][j].moveable = 0;
 		}
 	}
+	attackableSpaces = [];
+	attackHighlights = [];
 }
 
 function arrayCompare (array1, array2) {
