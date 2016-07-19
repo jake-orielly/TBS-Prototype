@@ -12,7 +12,10 @@ canvas {
 </head>
 <body onload="startGame()" oncontextmenu="return false">
 <script>
-
+/* Known Bugs
+	-unit not set to moved after attacking
+	-friendly units can move through eachother
+*/
 var spaceSize = 64;
 var boardRows = 13;
 var boardCols = 13;
@@ -40,11 +43,11 @@ var entityLayer = [];
 var moveParams = [];
 var delay = -2;
 
+var globalOffsetX = 0; //Used when scrolling the board 
+var globalOffsetY = 0; //Increase board rows &/or cols to test
 var globalSpeedX = 0;
 var globalSpeedY = 0;
 var scrollSpeed = 4;
-var globalOffsetX = 0;
-var globalOffsetY = 0;
 
 var playerUnits = [];
 var playerHP = [];
@@ -152,10 +155,10 @@ function startGame() {
 		}
 	}
 	
-	//newPlayerUnit(2, 4, 1);
-	//newPlayerUnit(2, 2, 2);
+	newPlayerUnit(2, 4, 1);
+	newPlayerUnit(2, 2, 2);
 	newPlayerUnit(4, 4, 0);
-	//newPlayerUnit(3, 3, 0);
+	newPlayerUnit(3, 3, 0);
 	
 	newEnemyUnit(10, 4, 1);
 	newEnemyUnit(6, 4, 0);
@@ -205,7 +208,7 @@ function startGame() {
 function newPlayerUnit (xCord, yCord, unit) {
 	playerUnits[playerUnits.length] = new component(50, 50, units[unit].image, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "player", units[unit]);
 	unitMoved[playerUnits.length-1] = 0;
-	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "7");
+	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
 	entityLayer[xCord][yCord] = playerUnits.length-1;
 }
 
@@ -417,45 +420,26 @@ function updateGameArea() {
 	}
 	
 	for (var i = 0; i < boardRows; i++) {
-		for (var j = 0; j < boardCols; j++) {
-			spaces[i][j].newPos();
-			spaces[i][j].update();
-		}
+		arrayRefresh(spaces[i]);
 	}
 
 	if (movementHighlights != []) {
-		for (var i = 0; i < movementHighlights.length; i++) {
-				movementHighlights[i].newPos();
-				movementHighlights[i].update();
-		}
+		arrayRefresh(movementHighlights);
 	}
 	
-	for (var i = 0; i < attackHighlights.length; i++) {
-		attackHighlights[i].newPos();
-		attackHighlights[i].update();
-	}
-	
-	for (var i = 0; i < playerUnits.length; i++) {
-		playerUnits[i].newPos();
-		playerUnits[i].update();
-		playerHP[i].newPos();
-		playerHP[i].update();
-	}
+	arrayRefresh(attackHighlights);
+	arrayRefresh(playerUnits);
+	arrayRefresh(playerHP);
 	
 	for (var i = 0; i < enemyUnits.length; i++) {
 		if (enemyHP[i].text > 0) {
-			enemyUnits[i].newPos();
-			enemyUnits[i].update();
-			enemyHP[i].newPos();
-			enemyHP[i].update();
+			refresh(enemyUnits[i]);
+			refresh(enemyHP[i]);
 		}
 	}
 
 	if (path != []) {
-		for (var i = 0; i < path.length; i++) {
-			path[i].newPos();
-			path[i].update();
-		}
+		arrayRefresh(path);
 	}
 	
 	if (terrainCardOn) {
@@ -465,11 +449,11 @@ function updateGameArea() {
 	}
 	
 	if (unitCardOn) {
-	unitCard.update();
-	unitCardAttack.update();
-	unitCardDef.update();
-	unitCardMove.update();
-	unitCardSight.update();
+		unitCard.update();
+		unitCardAttack.update();
+		unitCardDef.update();
+		unitCardMove.update();
+		unitCardSight.update();
 	}
 
 	if (capturing && delay < 0) {
@@ -564,7 +548,18 @@ function updateGameArea() {
 	frame++;
 }
 
-function fogUpdate() {
+function refresh(given) {
+	given.newPos();
+	given.update();
+}
+
+function arrayRefresh(given) {	//runs refresh on all elements of array
+	for (var i = 0; i < given.length; i++) {
+		refresh(given[i]);
+	}
+}
+
+function fogUpdate() { //Used for fog of war, half finished, not priority currently
 	fogLayer = [];
 	
 	for (var i = 0; i < boardRows; i++) {
@@ -637,7 +632,7 @@ function handleInput() {
 	
 }
 
-function clicked(event) {
+function clicked(event) { //Called any time the user clicks
 	if (delay < 0 && !capturing){
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
@@ -938,6 +933,7 @@ function enemyTurn () {
 function captureStructure(x,y) {
 	capturing = 1;
 	captureCounter.text = Math.abs(structureMap[x][y]);
+	alert(entityLayer[x][y]);
 	captureVal = structureMap[x][y] + 10;//*(temp/Math.abs(temp));
 	structureMap[x][y] = captureVal;
 	if (board[x][y] > 8) {
