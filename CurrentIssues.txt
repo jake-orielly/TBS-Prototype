@@ -1,2 +1,3 @@
-If you attack with a unit, and put it on top of an old unit, one of the units disappears.
+If you attack with a unit, and put it on top of an old unit, they stack. Seems unintuitive to have units hidden under each other
 Commenting/Confusing ordering of variables, needs readability
+Unable to see unit costs or what each building is worth in terms of income
