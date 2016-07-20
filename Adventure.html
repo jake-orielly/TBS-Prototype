@@ -7,30 +7,30 @@ canvas {
     border: 1px solid #d3d3d3;
     background-color: #f1f1f1;
 }
-
 </style>
 </head>
 <body onload="startGame()" oncontextmenu="return false">
 <script>
-/* Known Bugs
-	-unit not set to moved after attacking
-	-friendly units can move through eachother
-*/
-var spaceSize = 64;
-var boardRows = 13;
-var boardCols = 13;
-var spaces = [];
+//Variables used in the basic construction of the board
+var spaceSize = 64; //size (in pixels) of each square on the board
+var boardRows = 13; //# of rows our board will have
+var boardCols = 13; //# of cols
+var board = [];
 var boardX;
 var boardY;
-var phase = 0;
-var board = [];
+var spaces = [];
+
+var phase = 0; //Used to keep track of what player is doing with each click 
+var delay = -2; //Used when we want to add in a real time delay (delay is 1 per frame so delay = 60 means 1 second IRL)
+var frame; //keeps track of how many frames since the game began
+var entityLayer = []; //Keeps track of whether a space is terrain (== -1), a friendly unit (> -1), or an enemy unit (< -1) (each unit in this array has a unique #)
+//When accessing an enemy unit based on its entity layer #, access the correct position in enemyUnits[] with: 
+//enemyUnits((entityLayer[x][y]+2)*-1)
+
+//Variables used in movement and pathing functions
 var moveableSpaces = [];
 var newMoveable;
 var moveableGrid = [];
-var attackableSpaces = [];
-var newAttackable;
-var attackHighlights = [];
-var attackCheck = [];
 var spaceOffset = [[1,0],[-1,0],[0,1],[0,-1]];
 var currX;
 var currY;
@@ -39,50 +39,78 @@ var pathX;
 var pathY;
 var moves = [];
 var selectedUnit;
-var entityLayer = [];
 var moveParams = [];
-var delay = -2;
+var movementHighlights = [];
 
-var globalOffsetX = 0; //Used when scrolling the board 
-var globalOffsetY = 0; //Increase board rows &/or cols to test
+//Variables used for board scrolling (increase board rows &/or cols to test)
+var globalOffsetX = 0;
+var globalOffsetY = 0;
 var globalSpeedX = 0;
 var globalSpeedY = 0;
-var scrollSpeed = 4;
+var scrollSpeed = 4; //To increase scrolls speed change this (not others)
 
+//Variables used to track player units and hp
 var playerUnits = [];
 var playerHP = [];
 var unitMoved = [];
 
+//Variables used to track enemy units and hp
 var enemyUnits = [];
 var enemyHP = [];
 var enemyUnitMoved = [];
 var currentEnemy;
 
+//Variables used in attack functions
+var attackableSpaces = [];
+var newAttackable;
+var attackHighlights = [];
+var attackCheck = [];
 var attacking = 0;
 var hpToSet = [];
 
+//Variables to track turn and turn visuals
 var turnNumber;
 var turnText;
 var turnCard;
 var turnCardOn = false;
 var turnOver = 0; 
 
+//Arrays that hold/keep track of fog of war (not currently implemented)
 var fogMap = [];
 var fogLayer = [];
 
+//Image for each type of space(/terrain)
 var terrainImg = ["grass.png", "trees.png", "mountain.png","river.png",
 "friendlyCastle.png","friendlyBarracks.png","friendlyVillage.png",
 "barracks.png","village.png", 
 "enemyCastle.png", "enemyBarracks.png","enemyVillage.png"];
-var terrainCost = [1,2,3,"X",1,1,1,1,1,1,1,1];
-var terrainDef = [1,2,3,"X",4,3,2,3,2,4,3,2];
+//Movement cost of space types, currently stats for friendly, neutral, and enemy structures is the same
+//But it might make sense to have them differ
+var terrainCost = [1,2,3,"X", //terrain
+1,1,1, //friendly structures
+1,1, //neutral structures
+1,1,1]; //enemy structures
+var terrainDef = [1,2,3,"X", //Same as above except defense scores
+4,3,2,
+3,2,
+4,3,2];
 
+//Variables used for the unit card (window that shows terrain stats when you click on it)
 var terrainCard;
 var terrainCardMove;
 var terrainCardDef;
 var terrainCardSpace;
 var terrainCardOn = false;
 
+//Variables used for the unit card (window that shows a units stats when you click on it)
+var unitCard;
+var unitCardAttack;
+var unitCardDef;
+var unitCardMove;
+var unitCardSight;
+var unitCardOn = 0;
+
+//Variables used in capturing and capturing display
 var structureMap = [];
 var capturing = 0; 
 var captureCounter; 
@@ -91,6 +119,7 @@ var captureCard;
 var capturing = 0;
 var captureVal;
 
+//Variables used for building units and the unit building display
 var factoryCard;
 var factoryCardUnits = [];
 var factoryCardUnitBackgrounds = [];
@@ -102,85 +131,84 @@ var factoryY;
 var toBuild;
 var buildingUnit = false;
 
+//Variables used for money and income
 var gold;
 var goldText;
 var income; 
 var incomeText;
 
-var unitCard;
-var unitCardAttack;
-var unitCardDef;
-var unitCardMove;
-var unitCardSight;
-var unitCardOn = 0;
-
+//These objects store the stats for each unit, as well as the display images, and their cost to produce
 var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", enemyImage: "soldierEnemy.png", name: "Light Infantry", cost: 300};
 var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", movedImage: "knightMoved.png", enemyImage: "knightEnemy.png", name: "Heavy Infantry", cost: 600};
 var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", movedImage: "cavalryMoved.png", enemyImage: "cavalryEnemy.png", name: "Cavalry", cost: 1000};
 var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
 
 var units = [infantry, heavyInfantry, cavalry];
+//current attack function doesn't support long range (yet)
 //var units = [infantry, heavyInfantry, cavalry, archer];
 
-var movementHighlights = [];
-
-var frame;
-
-function startGame() {
+function startGame() { //called when the game starts
 	frame = 0; 
 	turnNumber = 1;
 	gold = 500;
 	
-	if (boardRows * spaceSize > window.innerWidth) 
-		boardX = parseInt(window.innerWidth/spaceSize)*spaceSize;
-	else 
-		boardX = boardRows * spaceSize;
-		
-	if (boardCols * spaceSize > window.innerHeight)
+	if (boardRows * spaceSize > window.innerWidth) //if the board is wider than the screen
+		boardX = parseInt(window.innerWidth/spaceSize)*spaceSize; //make the display area however many squares we can fit on the screen 
+	else 														  //if not all the spaces fit on screen they can be seen by scrolling
+		boardX = boardRows * spaceSize; //otherwise we show the whole board
+			
+	if (boardCols * spaceSize > window.innerHeight) //same as above except but for vertical
 		boardY = parseInt(window.innerHeight/spaceSize)*spaceSize;
 	else 
 		boardY = boardCols * spaceSize;
 
 	
 	
-	mapTerrain();
-	mapStructures(); 
+	mapTerrain(); //lays out the map terrain
+	mapStructures(); //fills out structureMap[] to represent where buildings are
 	
+	//Fills out 2D arrays representing the terrain (spaces[]) and location of units (entityLayer[])
 	for (var i = 0; i < boardRows; i++) {
 		spaces[i] = [];
 		entityLayer[i] = [];
 		for (var j = 0; j < boardCols; j++) {
-				spaces[i][j] = generateSpace(i,j);
-				entityLayer[i][j] = -1;
+				spaces[i][j] = generateSpace(i,j); //creates a space object for each location on the board holding the image and pixel location on the canvas
+				entityLayer[i][j] = -1; //We haven't added units so the entity layer is a empty
 		}
 	}
 	
-	newPlayerUnit(2, 4, 1);
+	newPlayerUnit(2, 4, 1); //creates a new player unit at board space x,y of unit type u where the function reads newPlayerUnit(x,y,u)
 	newPlayerUnit(2, 2, 2);
 	newPlayerUnit(4, 4, 0);
 	newPlayerUnit(3, 3, 0);
 	
-	newEnemyUnit(10, 4, 1);
+	newEnemyUnit(10, 4, 1); //same as newPlayer unit but for enemies, may condense both into a single function "newUnit" later on
 	newEnemyUnit(6, 4, 0);
 	newEnemyUnit(9, 3, 0);
 	newEnemyUnit(10, 2, 2);
 	
+	//This section is the decleration of all the visual elements we will need to render on the canvas
+	
+	//The terrain card is a window that appears when a piece of terrain is selected, that displays its stats, these are the visual components that make up the card
 	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
 	terrainCardDef = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "3");
 	
+	//The unit card is the terrain card but for a unit
 	unitCard = new component(128, 128, "unitCard.png", boardX-spaceSize*2, boardY-spaceSize*2, "none", "none");
 	unitCardAttack = new component("900 32px", "Courier New", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 48, "text", "1");
 	unitCardDef = new component("900 32px", "Courier New", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 103, "text", "2");
 	unitCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
 	unitCardSight = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "4");
 	
+	//Visual components for showing the capture progress graphic
 	for (var i = 0; i < 20; i++) {
 		captureBar[i] = new component(64, 10, "solidGrey", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none");
 	}
 	captureCounter = new component("900 32px", "Courier New", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", "4");
 	captureCard = new component(128, 320, "captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	
+	//The factory card is a window that shows money, income, units that can be built, and stats about those units, these are the visual components that make up the card
 	factoryCard = new component(spaceSize*9, spaceSize*8, "factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
 	goldText = new component("900 32px", "Courier New", "black", toPixel(3,0), toPixel(2,45), "text", "Gold: " + gold);
 	incomeText = new component("900 32px", "Courier New", "black", toPixel(7,0), toPixel(2,45), "text", income);
@@ -196,30 +224,17 @@ function startGame() {
 		factoryUnitStats[i][3] = new component("900 32px", "Courier New", "white", toPixel(6,27), toPixel(i*2 + 4,45), "text", units[i].sight);
 	}
 	
+	//The turn card is displayed at the end of each turn and shows what turn it is
 	turnText = new component("bold 68px", "Courier New", "black", (boardCols-2.9)*spaceSize/2, boardRows*spaceSize/2, "text", "DAY " + turnNumber);
 	turnCard = new component(spaceSize*5, spaceSize*2, "turnCard.png", (boardCols-4.8)*spaceSize/2, (boardRows-2.6)*spaceSize/2, "none", "none");
 	
-	refreshIncome();
+	refreshIncome(); //Sets income text to be correct based on # of friendly structures
 	
-	gameArea.start();
+	gameArea.start(); //Starts the game
 }
 
 
-function newPlayerUnit (xCord, yCord, unit) {
-	playerUnits[playerUnits.length] = new component(50, 50, units[unit].image, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "player", units[unit]);
-	unitMoved[playerUnits.length-1] = 0;
-	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
-	entityLayer[xCord][yCord] = playerUnits.length-1;
-}
-
-function newEnemyUnit (xCord, yCord, unit) {
-	enemyUnits[enemyUnits.length] = new component(50, 50, units[unit].enemyImage, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "enemy", units[unit]);
-	enemyUnitMoved[enemyUnits.length-1] = 0;
-	enemyHP[enemyHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
-	entityLayer[xCord][yCord] = ((enemyUnits.length-1) * -1)-2;
-}
-
-function mapTerrain() {
+function mapTerrain() { //edit this to edit terrain (aka place mountain, change forrest to river ect.)
 	for (var i = 0; i < boardRows; i++) {
 		board[i] = [];
 		for (var j = 0; j < boardCols; j++) {
@@ -306,7 +321,7 @@ function mapTerrain() {
 	board[6][6] = 7;
 }
 
-function mapStructures() {
+function mapStructures() { //Fills structureMap[] to represent building locations
 	for (var i = 0; i < boardRows; i++) {
 		structureMap[i] = [];
 		for (var j = 0; j < boardCols; j++) {
@@ -320,13 +335,31 @@ function mapStructures() {
 	}
 }
 
-function generateSpace (x,y) {
-	var image = getImage(x,y);
+function generateSpace (x,y) { //Takes x,y cordinates on board and creates the appropriate space object holding image and location on the board
+	var image = terrainImg[board[x][y]];
 	var space = new component(spaceSize, spaceSize, image, toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "" + x + "," + y);
 	return space;
 }
 
-var gameArea = {
+function newPlayerUnit (xCord, yCord, unit) { //Creates a new unit for the player 
+	//Visual component
+	playerUnits[playerUnits.length] = new component(50, 50, units[unit].image, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "player", units[unit]);
+	//Array location keeping track of whether unit has moved
+	unitMoved[playerUnits.length-1] = 0;
+	//Array location keeping track of unit health
+	playerHP[playerHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
+	//Array location keeping track of where this unit is on the board 
+	entityLayer[xCord][yCord] = playerUnits.length-1;
+}
+
+function newEnemyUnit (xCord, yCord, unit) { //Same as newPlayerUnit but different arrays for enemy
+	enemyUnits[enemyUnits.length] = new component(50, 50, units[unit].enemyImage, toPixel(xCord,globalOffsetX) + ((spaceSize-50)/2), toPixel(yCord,globalOffsetY) + ((spaceSize-50)/2), "enemy", units[unit]);
+	enemyUnitMoved[enemyUnits.length-1] = 0;
+	enemyHP[enemyHP.length] = new component("900 20px", "Courier New", "white", toPixel(xCord,globalOffsetX) + 25 + ((64-50)/2), toPixel(yCord,globalOffsetY) + 50 + ((64-50)/2), "text", "10");
+	entityLayer[xCord][yCord] = ((enemyUnits.length-1) * -1)-2;
+}
+
+var gameArea = { //Sets up the "canvas" which is the window all game elements are drawn on, its unlikely any of this will ever need to be changed
     canvas : document.createElement("canvas"),
     start : function() {
         this.canvas.width = boardX;
@@ -334,8 +367,8 @@ var gameArea = {
         this.context = this.canvas.getContext("2d");
         document.body.insertBefore(this.canvas, document.body.childNodes[0]);
 		this.interval = setInterval(updateGameArea, 20);
-		window.addEventListener("mouseup", clicked);
-		window.addEventListener('keydown', function (e) {
+		window.addEventListener("mouseup", clicked); //creates listener for when mouse is clicked
+		window.addEventListener('keydown', function (e) { //creates listener for when key is pressed
             gameArea.keys = (gameArea.keys || []);
             gameArea.keys[e.keyCode] = true;
         })
@@ -349,7 +382,8 @@ var gameArea = {
     }
 }
 
-function component(width, height, color, x, y, type, unit) {
+function component(width, height, color, x, y, type, unit) { //Components are elements that are represented visualy on the board
+	//We want to be able to access all this information about our component by calling component.variable
 	this.type = type;
     this.width = width;
     this.height = height;
@@ -362,12 +396,12 @@ function component(width, height, color, x, y, type, unit) {
     this.moveable = 0;
 	this.text = unit
 	
-    this.update = function() {
+    this.update = function() { //every frame each component gets drawn onto the canvas with this function
 		ctx = gameArea.context;
 		
-		if (this.type == "text") {
+		if (this.type == "text") { //called if the component is a piece of text
 			ctx.font = this.width + " " + this.height;
-			if (color == "solidBlue") 
+			if (color == "solidBlue") //different colors
 				ctx.fillStyle = "rgba(0, 78, 225, 1)";
 			else if (color == "solidGrey")
 				ctx.fillStyle = "rgba(106, 107, 107, 1)";
@@ -378,8 +412,8 @@ function component(width, height, color, x, y, type, unit) {
 			ctx.fillText(this.text, this.x, this.y);
 		}
 		
-		else if (this.type == "square") {
-			if (color == "blue")
+		else if (this.type == "square") { //called if the component is a square
+			if (color == "blue") //more different colors (4th argument in rgba is opacity/transparecny with 0 being invisible and 1 being solid) 
 				ctx.fillStyle = "rgba(69, 125, 211, 0.5)";
 			else if (color == "red")
 				ctx.fillStyle = "rgba(209, 21, 30, 0.5)";
@@ -396,7 +430,7 @@ function component(width, height, color, x, y, type, unit) {
             ctx.fillRect(this.x, this.y, this.width, this.height);
 		}
 		
-		else {
+		else { //called if the component we're drawing is a picture
 			ctx.drawImage(
 			this.image, 
 			this.x, 
@@ -406,79 +440,71 @@ function component(width, height, color, x, y, type, unit) {
 		}
     }
 	
-    this.newPos = function() {
+    this.newPos = function() { //called when the component moves, adds its speed to its position (we need to include globalSpeed so that it moves when the board is scrolled)
 		this.x = this.x + this.speedX + globalSpeedX;
 		this.y = this.y + this.speedY + globalSpeedY;        
 	}
 } 
 
-function updateGameArea() {
-    gameArea.clear();
+function updateGameArea() { //Called to draw each new frame on the canvas
+    gameArea.clear(); //Erase everything we drew for the last frame
 	
-	if (gameArea.keys) {
-		handleInput();
-	}
+	if (gameArea.keys) //If a key is being pressed
+		handleInput(); //then we let this guy handle it 
 	
-	for (var i = 0; i < boardRows; i++) {
+	for (var i = 0; i < boardRows; i++) { //We refresh all the images for our board spaces (everything has to be re-drawn each frame)
 		arrayRefresh(spaces[i]);
 	}
 
-	if (movementHighlights != []) {
-		arrayRefresh(movementHighlights);
+	arrayRefresh(movementHighlights); //Re-draw the squares showing where a unit can move
+	
+	arrayRefresh(attackHighlights); //Re-draw the squares showing where a unit can attack
+	
+	for (var i = 0; i < playerUnits.length; i++) { //For each of our units
+		if (playerHP[i].text > 0) { //if its alive
+			refresh(playerUnits[i]); //re-draw it
+			refresh(playerHP[i]); //re-draw its HP
+		}
 	}
 	
-	arrayRefresh(attackHighlights);
-	arrayRefresh(playerUnits);
-	arrayRefresh(playerHP);
-	
-	for (var i = 0; i < enemyUnits.length; i++) {
+	for (var i = 0; i < enemyUnits.length; i++) { //Do the same for enemies
 		if (enemyHP[i].text > 0) {
 			refresh(enemyUnits[i]);
 			refresh(enemyHP[i]);
 		}
 	}
 
-	if (path != []) {
-		arrayRefresh(path);
-	}
+	if (path != []) //If we're displaying a unit's movement path
+		arrayRefresh(path); //re-draw each piece
 	
-	if (terrainCardOn) {
-		terrainCard.update();
-		terrainCardMove.update();
-		terrainCardDef.update();
-	}
-	
-	if (unitCardOn) {
-		unitCard.update();
-		unitCardAttack.update();
-		unitCardDef.update();
-		unitCardMove.update();
-		unitCardSight.update();
-	}
+	if (terrainCardOn) //If we're showing the terrain card
+		arrayUpdate([terrainCard,terrainCardMove,terrainCardDef]); //re-draw each piece
 
-	if (capturing && delay < 0) {
-		if (frame % 7 == 0) {
-			if (capturing > 0) {
-				captureCounter.text = captureCounter.text-1;							
-				if (captureCounter.text == Math.abs(captureVal)) {
-					capturing = -4;
-					//spaces[x][y].image.src = terrainImg[board[x][y]];
-					delay = -2;	
+	if (unitCardOn) //If we're showing the unit card 
+		arrayUpdate([unitCard,unitCardAttack,unitCardDef,unitCardMove,unitCardSight]); //re-draw each piece 
+
+	if (capturing && delay < 0) { //If we're capturing something and not waiting for something else to finish
+		if (frame % 7 == 0) { //once every 7 frames (change this to speed up or slow down rate at which capture graphic ticks, more frames, slower ticks)
+			if (capturing > 0) { //If we're not done
+				captureCounter.text = captureCounter.text-1; //change the text
+				if (captureCounter.text == Math.abs(captureVal)) { //If we just finished
+					capturing = -2; //Note that we're no longer capturing anything
+					delay = -2;	//and things no longer have to wait for it to be done
 				}
 			}
 			else if (capturing < 0) {
 				capturing++;
 			}
 		}
-		captureCard.update();
+		captureCard.update(); //And don't forget to re-draw our visuals
 		captureCounter.update();
 		
 		for (var i = 0; i < captureBar.length-(20-Math.abs(captureCounter.text)); i++) {
-			captureBar[i].update();
+			captureBar[i].update(); //Redraw these ones too (the little bars that tick down)
 		}
 	}
 	
-	if (buildingUnit) {
+	if (buildingUnit) { //If we're building a unit, re-draw our visuals
 		factoryCard.update();
 		for (var i = 0; i < factoryCardUnits.length; i++) {
 			factoryCardUnitBackgrounds[i].update();
@@ -493,54 +519,55 @@ function updateGameArea() {
 		incomeText.update();
 	}
 	
-	if (delay < 0 && turnOver && !capturing) {
-		if (turnOver == 1) {
-			delay = 16;
-			turnOver = 2;
+	if (delay < 0 && turnOver && !capturing) { //If we're not waiting for something to finish or capturing anything and the turn is over
+		if (turnOver == 1) { //if its phase 1
+			delay = 16; //wait a short bit
+			turnOver = 2; //and then start phase 2
 		}
-		else if (turnOver == 2) {
-			endTurn();
-			delay = 50;
-			turnOver = 3;
+		else if (turnOver == 2) { //if its phase 2
+			endTurn(); //end the turn (this will turn on turnCard aka the "Day X" graphic)
+			delay = 50; //wait almost a second
+			turnOver = 3; //and then start phase 3
 		}
 		else {
-			turnCardOn = false;
-			turnNumber++;
-			turnText.text = "DAY " + turnNumber;
-			turnOver = 0;
-			enemyTurn();
+			turnCardOn = false; //turn off the turn card
+			turnNumber++; //another turn has passed
+			turnText.text = "DAY " + turnNumber; //update the turn card to show this
+			turnOver = 0; //and the turn is no longer over
+			enemyTurn(); //now its the enemy turn
 		}
 	}
 	
-	if (delay < 0 && !arrayCompare(hpToSet,[])) {
-		hpToSet[0].text -= 1;
-		delay = 5;
-		if (hpToSet[0].text == hpToSet[1]) {
-			attacking = 0;
-			delay = -2;
-			if (hpToSet[1] = 0) {
+	if (delay < 0 && !arrayCompare(hpToSet,[])) { //if we're not waiting on anything and damage is waiting to be dealt
+		hpToSet[0].text -= 1; //subtract 1 hp
+		delay = 5; //and we're gonna wait a while before we do it again so that it looks fancier (increase to increase tick time on damage, decrease to decrease)
+		if (hpToSet[0].text == hpToSet[1]) { //if we've done all the damage we need to do
+			attacking = 0; //stop attacking
+			delay = -2; //everything else doesn't have to wait anymore
+			if (hpToSet[1] == 0) { //if we killed something move onto the space where it was
 				moves = [[toSpace(enemyUnits[hpToSet[2]].x,globalOffsetX),toSpace(enemyUnits[hpToSet[2]].y,globalOffsetY)],[toSpace(playerUnits[selectedUnit].x,globalOffsetX),toSpace(playerUnits[selectedUnit].y,globalOffsetY)]];
 				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
 				moveParams = [toSpace(playerUnits[selectedUnit].x,globalOffsetX),toSpace(playerUnits[selectedUnit].y,globalOffsetY),playerUnits[selectedUnit],moves.length-1];
 				executeMoves();
-				unitMoved[selectedUnit] = 1;
-				refreshUnitMoved();
 			}
+			unitMoved[selectedUnit] = 1; //after attacking set the unit as having been moved this turn
+			playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].text.movedImage;
+			refreshUnitMoved();
 			hpToSet = [];
 		}
 	}
 	
-	if (turnCardOn) {
-		turnCard.update();
+	if (turnCardOn) { //If we're showing the turn card
+		turnCard.update(); //Re-draw it
 		turnText.update();
 	}	
 
 	//fogUpdate();
 	
-	if (delay > 0) {
+	if (delay > 0) { //if theres a delay decrease it by one per frame
 		delay--;
 	}
-	else if (delay == 0) {
+	else if (delay == 0) { //this should probably be replaced, this is what makes units "step" accross the board instead of teleporting but its pretty bad
 		delay--;
 		executeMoves();
 	}
@@ -548,7 +575,33 @@ function updateGameArea() {
 	frame++;
 }
 
-function refresh(given) {
+function handleInput() { //called when a key is pressed
+    if (gameArea.keys[83] && globalOffsetY > boardY - spaceSize*boardCols) { // if w is pressed scroll up
+		globalSpeedY = -1*scrollSpeed;
+		globalOffsetY -= scrollSpeed;
+	}  
+	else if (globalSpeedY == -1*scrollSpeed) {globalSpeedY = 0;} //if no longer pressing stop moving stop moving
+    
+	if (gameArea.keys[87] && globalOffsetY < 0) { //s scrolls down
+		globalSpeedY = scrollSpeed;
+		globalOffsetY += scrollSpeed;
+	} 
+	else if (globalSpeedY == scrollSpeed) {globalSpeedY = 0;}
+	
+	if (gameArea.keys[65] && globalOffsetX < 0) { //d scrolls right
+		globalSpeedX = scrollSpeed;
+		globalOffsetX += scrollSpeed;
+	}
+	else if (globalSpeedX == scrollSpeed) {globalSpeedX = 0;}
+	
+    if (gameArea.keys[68] && globalOffsetX > boardX - spaceSize*boardRows) { //a scrolls left
+		globalSpeedX = -1*scrollSpeed;
+		globalOffsetX -= scrollSpeed;
+	} 
+	else if (globalSpeedX == -1*scrollSpeed) {globalSpeedX = 0;}	
+}
+
+function refresh(given) { //runs newPos and update on given
 	given.newPos();
 	given.update();
 }
@@ -556,6 +609,12 @@ function refresh(given) {
 function arrayRefresh(given) {	//runs refresh on all elements of array
 	for (var i = 0; i < given.length; i++) {
 		refresh(given[i]);
+	}
+}
+
+function arrayUpdate(given) { //updates all elements of array
+	for (var i = 0; i < given.length; i++) {
+		given[i].update();
 	}
 }
 
@@ -605,42 +664,15 @@ function defog(i,j) {
 	}
 }
 
-function handleInput() {
-    if (gameArea.keys[83] && globalOffsetY > boardY - spaceSize*boardCols) { // w key
-		globalSpeedY = -1*scrollSpeed;
-		globalOffsetY -= scrollSpeed;
-	}  
-	else if (globalSpeedY == -1*scrollSpeed) {globalSpeedY = 0;} //if keyup stop moving
-    
-	if (gameArea.keys[87] && globalOffsetY < 0) { //s
-		globalSpeedY = scrollSpeed;
-		globalOffsetY += scrollSpeed;
-	} 
-	else if (globalSpeedY == scrollSpeed) {globalSpeedY = 0;}
-	
-	if (gameArea.keys[65] && globalOffsetX < 0) { //d
-		globalSpeedX = scrollSpeed;
-		globalOffsetX += scrollSpeed;
-	}
-	else if (globalSpeedX == scrollSpeed) {globalSpeedX = 0;}
-	
-    if (gameArea.keys[68] && globalOffsetX > boardX - spaceSize*boardRows) { //a
-		globalSpeedX = -1*scrollSpeed;
-		globalOffsetX -= scrollSpeed;
-	} 
-	else if (globalSpeedX == -1*scrollSpeed) {globalSpeedX = 0;}
-	
-}
-
-function clicked(event) { //Called any time the user clicks
+function clicked(event) { //called any time the user clicks
 	if (delay < 0 && !capturing){
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
 		if (buildingUnit) {
-			if (x < 2 || y < 2 || y > 9 || x > 10){
-				buildingUnit = false;
+			if (x < 2 || y < 2 || y > 9 || x > 10){ //user clicks outside the building unit window
+				buildingUnit = false; //close the building unit window
 			}
-			else if (x >= 3 && x <= 7 && y >= 3 && y <= 8) {
+			else if (x >= 3 && x <= 7 && y >= 3 && y <= 8) { //if they click a unit get it ready to build
 				if (y < 5) {
 					toBuild = 0;
 				}
@@ -651,10 +683,10 @@ function clicked(event) { //Called any time the user clicks
 					toBuild = 2;
 				}
 				
-				if (gold >= units[toBuild].cost) {
-					newPlayerUnit(factoryX, factoryY, toBuild);
+				if (gold >= units[toBuild].cost) { //if they have enough money to build the unit
+					newPlayerUnit(factoryX, factoryY, toBuild); //build it
 					unitMoved[unitMoved.length-1] = 1;
-					gold -= units[toBuild].cost;
+					gold -= units[toBuild].cost; //and take the money
 					goldText.text = "Gold: " + gold;
 					buildingUnit = false;
 					playerUnits[playerUnits.length-1].image.src = playerUnits[playerUnits.length-1].text.movedImage;
@@ -910,7 +942,11 @@ function moveActual(x,y,given) {
 		enemyHP[currentEnemy].y = toPixel(y,globalOffsetY) + 57;
 	}
 }
-//only works for last one
+
+/*known bugs
+only works for last one
+*/
+
 function enemyTurn () {
 	var curr;
 	for (var i = 0; i < enemyUnits.length; i++) {
@@ -933,7 +969,6 @@ function enemyTurn () {
 function captureStructure(x,y) {
 	capturing = 1;
 	captureCounter.text = Math.abs(structureMap[x][y]);
-	alert(entityLayer[x][y]);
 	captureVal = structureMap[x][y] + 10;//*(temp/Math.abs(temp));
 	structureMap[x][y] = captureVal;
 	if (board[x][y] > 8) {
@@ -997,9 +1032,11 @@ function expandMoveable() {
 				currX = moveableSpaces[i].x + spaceOffset[k][0];
 				currY = moveableSpaces[i].y + spaceOffset[k][1];
 				if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space being checked is on the board
-					&& moveableSpaces[i].movement - terrainCost[board[currX][currY]] >= 0
+					&& moveableSpaces[i].movement - terrainCost[board[currX][currY]] >= 0 //unit has enough movement for terrain cost
 					&& board[currX][currY] != 3 //space is not a river
-					&& entityLayer[currX][currY] > -2){ //space is not an enemy
+					&& entityLayer[currX][currY] > -2 //space is not an enemy
+					&& !(moveableSpaces[i].movement - terrainCost[board[currX][currY]] == 0 //if it's the last space of the move
+						 && entityLayer[currX][currY] > -1) ){  //we can't move onto an ally unit
 					newMoveable = {movement: moveableSpaces[i].movement - terrainCost[board[currX][currY]], x: currX, y: currY};
 					moveableSpaces[moveableSpaces.length] = newMoveable;
 				}
@@ -1081,32 +1118,24 @@ function clearMoveable() {
 	attackHighlights = [];
 }
 
-function arrayCompare (array1, array2) {
-	if (!array1 || !array2) {
+function arrayCompare (array1, array2) { //array1 == array2 doesn't work the way you would hope so this does that (works for nested arrays)
+	if (!array1 || !array2)
 		return false;
-	}
 	
-	if (array1.length != array2.length) {
+	if (array1.length != array2.length)
 		return false
-	}
 	
-	for (var i = 0; i < array1.length; i++) {
+	for (var i = 0; i < array1.length; i++) { //for each element of the array
 		if (array1[i] instanceof Array && array2[i] instanceof Array) {
-			if (!(arrayCompare(array1[i],array2[i]))) {
+			if (!(arrayCompare(array1[i],array2[i]))) //if its a nested array recurse
 				return false;
-			}
 		}
 		
-		else if (!(array1[i] == array2[i])) {
+		else if (!(array1[i] == array2[i])) //if they're not the same return false
 			return false;
-		}
 	}
 	
 	return true;
-}
-
-function getImage(x,y,category) {
-	return terrainImg[board[x][y]];
 }
 
 function toPixel (given,offset) {
