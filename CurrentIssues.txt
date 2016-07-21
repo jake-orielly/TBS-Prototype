@@ -7,6 +7,8 @@ It is not possible for a unit to use some of its movement, then the rest //comme
 Unintuitive as to how quickly units can take buildings
 Attack and move should be separate commands so that players have the opportunity to place their units in better locations
 Whichever unit the player moves last shows as having moved on day 2 even though it has moved day 1 (issue is purely visual, unit can still be moved)
+Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
+^Results in being unable to move some of the spawned units and preventing the next turn from being possible
 
 Unimportant Issues:
 Jake uses the word "we" way to much in his comments
