@@ -1,7 +1,12 @@
-Units can not stand still
-It is not possible for a unit to use some of its movement, then the rest
+Important Issues:
 Commenting/Confusing ordering of variables, needs readability
 Unable to see unit costs or what each building is worth in terms of income
+Units can not stand still
+It is not possible for a unit to use some of its movement, then the rest
+
+Unimportant Issues:
+Jake uses the word "we" way to much in his comments
+Jake writes way too many comments for way too little code
 
 Recently Resolved:
 Issue: If you attack with a unit, and put it on top of an old unit, they stack. Seems unintuitive to have units hidden under each other
