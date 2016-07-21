@@ -10,8 +10,10 @@ Whichever unit the player moves last shows as having moved on day 2 even though 
 Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 ^Results in being unable to move some of the spawned units and preventing the next turn from being possible
 
-Unit stacking when: producing a unit while a unit is on the factory, attacking with top left soldier then bottom right
+Unit stacking when attacking with top left soldier then bottom right
 Can't produce a unit if you already moved all your units
+
+If you capture an enemy structure then capture a neutral structure capture graphic stays red
 
 Unimportant Issues:
 Jake uses the word "we" way to much in his comments
