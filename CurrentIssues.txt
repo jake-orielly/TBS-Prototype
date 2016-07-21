@@ -9,6 +9,7 @@ Attack and move should be separate commands so that players have the opportunity
 Whichever unit the player moves last shows as having moved on day 2 even though it has moved day 1 (issue is purely visual, unit can still be moved)
 Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 ^Results in being unable to move some of the spawned units and preventing the next turn from being possible
+Enemy Knight can't be attacked //might be intentional due to the Knight being the piece that moves during enemy turns
 
 Unit stacking when attacking with top left soldier then bottom right
 Can't produce a unit if you already moved all your units
