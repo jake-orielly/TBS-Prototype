@@ -99,7 +99,6 @@ var terrainDef = [1,2,3,"X", //Same as above except defense scores
 var terrainCard;
 var terrainCardMove;
 var terrainCardDef;
-var terrainCardSpace;
 var terrainCardOn = false;
 
 //Variables used for the unit card (window that shows a units stats when you click on it)
@@ -668,7 +667,7 @@ function clicked(event) { //called any time the user clicks
 	if (delay < 0 && !capturing){
 		var x = toSpace(event.clientX, globalOffsetX);
 		var y = toSpace(event.clientY, globalOffsetY);
-		if (buildingUnit) {
+		if (buildingUnit) { //if the building unit window is open
 			if (x < 2 || y < 2 || y > 9 || x > 10){ //user clicks outside the building unit window
 				buildingUnit = false; //close the building unit window
 			}
@@ -693,45 +692,39 @@ function clicked(event) { //called any time the user clicks
 				}
 			}
 		}
-		else if (phase == 0 && !unitMoved[entityLayer[x][y]]) {
-			if (entityLayer[x][y] > -1) {
-				if (terrainCardSpace) {
-					movementHighlights = [];
-				}
-				selectedUnit = entityLayer[x][y];
-				highlightMoveable(x,y);	
-				terrainCardOn = false;
-				unitCardAttack.text = playerUnits[entityLayer[x][y]].stats.attack;
+		else if (phase == 0) {
+			movementHighlights = []; //clear off existing movement highlights
+			if (entityLayer[x][y] > -1 && !unitMoved[entityLayer[x][y]]) { //if clicked on a player unit that hasn't moved this turn
+				selectedUnit = entityLayer[x][y]; //the unit clicked on becomes the selected unit
+				highlightMoveable(x,y);	//this function will draw the squares that represent where the unit can move
+				terrainCardOn = false; //stop showing the terrain card
+				unitCardAttack.text = playerUnits[entityLayer[x][y]].stats.attack; //set each element of the unit card
 				unitCardDef.text = playerUnits[entityLayer[x][y]].stats.defense;
 				unitCardMove.text = playerUnits[entityLayer[x][y]].stats.movement;
 				unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
-				unitCardOn = 1;
-				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
+				unitCardOn = 1; //start showing the unit card
+				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none"); //highlight the selected unit
 				phase++;
 			}
-			else if (entityLayer[x][y] < -1) {
-				movementHighlights = [];
-				terrainCardOn = false;
-				unitCardAttack.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.attack;
+			else if (entityLayer[x][y] < -1) { //if clicked on an enemy unit
+				movementHighlights = []; //stop showing any movemnt highlights 
+				terrainCardOn = false; //stop showing the terrain card
+				unitCardAttack.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.attack; //set each element of the unit card
 				unitCardDef.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.defense;
 				unitCardMove.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.movement;
 				unitCardSight.text = enemyUnits[(entityLayer[x][y]+2)*-1].stats.sight;
-				unitCardOn = 1;
-				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
+				unitCardOn = 1; //start showing the unit card
+				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none"); //highlight the selected unit
 			}
-			else if (board[x][y] == 5) {
-				factoryX = x;
+			else if (board[x][y] == 5) { //if clicked on a friendly barracks/factory
+				factoryX = x; //remember where the factory is for later
 				factoryY = y;
-				buildingUnit = true;
+				buildingUnit = true; //and show the factory window
 			}
-			else {
-				if (terrainCardSpace) {
-					movementHighlights = [];
-				}
-				terrainCardSpace = spaces[x][y];
-				movementHighlights[0] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none");
-				terrainCardOn = true;
-				terrainCardMove.text = terrainCost[board[x][y]];
+			else { //if clicked on terrain
+				movementHighlights[0] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none"); //highlight it 
+				terrainCardOn = true; //turn on the terrain card
+				terrainCardMove.text = terrainCost[board[x][y]]; //set each element of the terrain card
 				terrainCardDef.text = terrainDef[board[x][y]];
 			}
 		}
@@ -806,6 +799,29 @@ function clicked(event) { //called any time the user clicks
 			}
 		}
 	}
+}
+
+function highlightMoveable(x, y) {
+	getMoveable(x,y);
+
+	for (var i = 0; i < boardRows; i++) {
+		for (var j = 0; j < boardCols; j++) { //for each square on the board that is moveable, highlight it with a semi-transparent blue square
+			if (moveableGrid[i][j] > -1 && !(i == x && j == y) && entityLayer[i][j] > -2) {
+					movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "blue", toPixel(i,globalOffsetX), toPixel(j,globalOffsetY), "square", "none");
+					spaces[i][j].moveable = 1; //and mark it as moveable
+			}
+		}
+	}
+	
+	highlightAttackable();
+}
+
+function getMoveable(givenX,givenY) {
+	var potentialMoveable = {movement: playerUnits[selectedUnit].stats.movement, x: givenX, y: givenY}; //create our starting point, the units location
+	moveableSpaces = [potentialMoveable]; //add it to our list of spaces we can move to
+	moveableGrid = [];
+	expandMoveable();
+	generateGrid();
 }
 
 function makeAttack(tar, atk) {
@@ -998,31 +1014,6 @@ function moveOver() {
 	delay = -2;
 	if (!attacking)
 		playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage;
-}
-
-function highlightMoveable(x, y) {
-	getMoveable(x,y);
-
-	for (var i = 0; i < boardRows; i++) {
-		for (var j = 0; j < boardCols; j++) {
-			if (moveableGrid[i][j] > -1 && !(i == x && j == y)) {
-				if (entityLayer[i][j] > -2) {
-					movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "blue", toPixel(i,globalOffsetX), toPixel(j,globalOffsetY), "square", "none");
-					spaces[i][j].moveable = 1;
-				}
-			}
-		}
-	}
-	
-	highlightAttackable();
-}
-
-function getMoveable(givenX,givenY) {
-	var potentialMoveable = {movement: playerUnits[selectedUnit].stats.movement, x: givenX, y: givenY};
-	moveableSpaces = [potentialMoveable];
-	moveableGrid = [];
-	expandMoveable();
-	generateGrid();
 }
 
 function expandMoveable() {
