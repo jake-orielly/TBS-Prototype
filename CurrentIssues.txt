@@ -10,10 +10,10 @@ Whichever unit the player moves last shows as having moved on day 2 even though 
 Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 ^Results in being unable to move some of the spawned units and preventing the next turn from being possible
 
+Unit stacking when: producing a unit while a unit is on the factory, attacking with top left soldier then bottom right
+Can't produce a unit if you already moved all your units
+
 Unimportant Issues:
 Jake uses the word "we" way to much in his comments
 Jake writes way too many comments for way too little code
 
-Recently Resolved:
-Issue: If you attack with a unit, and put it on top of an old unit, they stack. Seems unintuitive to have units hidden under each other
-Fix: It's no longer possible to move a unit on top of another by attacking
