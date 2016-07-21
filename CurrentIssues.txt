@@ -12,6 +12,8 @@ Multiple units can be spawned in a row on one turn from a single spawn point, th
 Enemy Knight can't be attacked //might be intentional due to the Knight being the piece that moves during enemy turns
 ^Leads to enemy knight stacking on your unit
 
+Victory Conditions?
+
 Unit stacking when attacking with top left soldier then bottom right
 Can't produce a unit if you already moved all your units
 
