@@ -1,9 +1,12 @@
 Important Issues:
 Commenting/Confusing ordering of variables, needs readability
 Unable to see unit costs or what each building is worth in terms of income
-Units can not stand still
+Units can not stand still //No end turn early option
 It is not possible for a unit to use some of its movement, then the rest //comment from Dao IMO move attack move should not be possible
+
 Unintuitive as to how quickly units can take buildings
+Attack and move should be separate commands so that players have the opportunity to place their units in better locations
+Heavy infantry shows as having moved on day 2 even though it has moved day 1
 
 Unimportant Issues:
 Jake uses the word "we" way to much in his comments
