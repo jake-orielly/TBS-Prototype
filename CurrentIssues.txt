@@ -3,9 +3,6 @@ Commenting/Confusing ordering of variables, needs readability
 Unable to see unit costs or what each building is worth in terms of income
 Units can not stand still
 It is not possible for a unit to use some of its movement, then the rest //comment from Dao IMO move attack move should not be possible
-
-New Issues:
-Units can attack multiple times in a row without ending their turn
 Unintuitive as to how quickly units can take buildings
 
 Unimportant Issues:
