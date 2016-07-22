@@ -906,11 +906,17 @@ function captureStructure(x,y) {
 	captureCounter.text = Math.abs(structureMap[x][y]); //Set our # display for capturing 
 	captureVal = structureMap[x][y] + 10; //establish how much progress we need to make twoards capturing NOTE: this should not be hardcoded as 10, will not work with enemy
 	structureMap[x][y] = captureVal; //change structureMap to reflect the progress we're going to make later on
-	if (board[x][y] > 8) { //if the structure is an enemy one, make the graphics red (otherwise they're be grey for neutral) NOTE: capture graphic bug
+	if (board[x][y] > 8) { //if the structure is an enemy one, make the graphics red
 		for (var i = 0; i < 20; i++) {
 			captureBar[i] = new component(64, 10, "solidRed", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none"); //This is an awful clumsy way to do this but had problems w/ edit
 		}
 		captureCounter = new component("900 32px", "Courier New", "solidRed", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
+	}
+	else if (board[x][y] > 6) { //if the structure is a neutral one, make the graphics grey 
+		for (var i = 0; i < 20; i++) {
+			captureBar[i] = new component(64, 10, "solidGrey", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none");
+		}
+		captureCounter = new component("900 32px", "Courier New", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
 	}
 	
 	if (structureMap[x][y] >= 0) { //if we finished capturing it 
