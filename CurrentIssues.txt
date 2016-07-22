@@ -5,11 +5,11 @@ Commenting/Confusing ordering of variables, needs readability
 Units can not stand still //No end turn early option
 Can't produce a unit if you already moved all your units
 It is not possible for a unit to use some of its movement, then the rest 
+Attack and move should be separate commands so that players have the opportunity to place their units in better locations
 
 Important Issues:
 Unable to see unit costs or what each building is worth in terms of income
 Unintuitive as to how quickly units can take buildings
-Attack and move should be separate commands so that players have the opportunity to place their units in better locations
 Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 ^Results in being unable to move some of the spawned units and preventing the next turn from being possible
 Enemy Knight can't be attacked //might be intentional due to the Knight being the piece that moves during enemy turns
