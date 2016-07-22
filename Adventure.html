@@ -533,7 +533,7 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 			turnNumber++; //another turn has passed
 			turnText.text = "DAY " + turnNumber; //update the turn card to show this
 			turnOver = 0; //and the turn is no longer over
-			enemyTurn(); //now its the enemy turn
+			//enemyTurn(); //now its the enemy turn NOTE: temporarily disabled
 		}
 	}
 	
@@ -744,13 +744,13 @@ function clicked(event) { //called any time the user clicks
 		
 		else if (phase == 1) {
 			if (spaces[x][y].moveable == 1) { //if clicked on a space unit can move to
-				makeMoves(x,y,playerUnits[selectedUnit]); //move it
+				makeMoves(x,y,playerUnits[selectedUnit]); //map/plan the move the player selected, and draw the path
 				phase++;
 			}
-			else if (isAttackable(x,y)){
-				var temp = isAttackable(x,y).destination;
-				makeMoves(temp.x,temp.y,playerUnits[selectedUnit]);
-				attackCheck = [x,y];
+			else if (isAttackable(x,y)){ //if clicked on an attackable space
+				var temp = isAttackable(x,y).destination; //remember where the unit will move to make the attack
+				makeMoves(temp.x,temp.y,playerUnits[selectedUnit]); //that's the units destination , so map it with makeMoves, and draw the path the unit will take
+				attackCheck = [x,y]; //remeber where the unit being attacked is
 				phase++;
 			}
 			else { //if they made a click that isn't attack or move act like its phase 0 because it means they want to do something else
@@ -758,41 +758,41 @@ function clicked(event) { //called any time the user clicks
 			}
 		}
 		
-		else if (phase == 2) {
-			if (moves[0][0] == x && moves[0][1] == y){
-				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
-				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
-				path = [];
-				clearMoveable();
+		else if (phase == 2) { //if clicked twice
+			if (moves[0][0] == x && moves[0][1] == y){ //if clicked on the same move destination space that was mapped on previous click, move is confirmed
+				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1; //the space the unit moved off of no longer contains a unit
+				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1]; //get the first move ready for execute moves
+				path = []; //no longer need to show the path, since move is about to happen
+				clearMoveable(); //no longer need to show moveable squares for same reason
 				unitCardOn = 0;
-				executeMoves();
-				if(structureMap[x][y] < 0) {
+				executeMoves(); //move has been confirmed, so make it
+				if(structureMap[x][y] < 0) { //if moving onto a structure, capture it
 					captureStructure(x,y);
 				}
-				unitMoved[selectedUnit] = 1;
+				unitMoved[selectedUnit] = 1; //mark the unit as having moved
 				refreshUnitMoved();
 			}
-			else if (spaces[x][y].moveable == 1) {
+			else if (spaces[x][y].moveable == 1) { //if clicked on a space the unit can move onto, but not the one pathed to in the last phase, re-do that phase with new destination
 				phase = 1;
 				moves = [];
 				path = [];
 				clicked(event);
 			}
-			else if (isAttackable(x,y) //space is attackable
-					 && moves[0][0] == isAttackable(x,y).destination.x
-					 && moves[0][1] == isAttackable(x,y).destination.y //and dest matches
-					 && arrayCompare([x,y],attackCheck)) { //and clicked  same space
-				makeAttack(entityLayer[x][y],selectedUnit);
-				if (parseInt(enemyHP[(entityLayer[x][y]+2)*-1].text) <= 0) {
-					killUnit(x,y);
+			else if (isAttackable(x,y) //if clicked on space that can be attacked 
+					 && moves[0][0] == isAttackable(x,y).destination.x //and the destination matches
+					 && moves[0][1] == isAttackable(x,y).destination.y 
+					 && arrayCompare([x,y],attackCheck)) { //and clicked same space as last time, confirming it
+				makeAttack(entityLayer[x][y],selectedUnit); //make the attack 
+				if (parseInt(enemyHP[(entityLayer[x][y]+2)*-1].text) <= 0) { //if the attack killed the unit
+					entityLayer[x][y] = -1; //then there's no longer a unit there
 				}
-				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+				entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1; //NOTE! Not sure what this is could be causing bugs, will review tomorrow am
 				moveParams = [moves[moves.length-1][0],moves[moves.length-1][1],playerUnits[selectedUnit],moves.length-1];
-				path = [];
+				path = []; //no longer need to display path, move highlights, or unit card
 				clearMoveable();
 				unitCardOn = 0;
-				attacking = 1;
-				executeMoves();
+				attacking = 1; //we're attacking 
+				executeMoves(); //make the moves
 			}
 			else {
 				clickedReset();
@@ -973,82 +973,91 @@ function drawPath(i) {
 	}
 }
 
-function executeMoves () {
-		if (delay == -2) {
+function executeMoves () { //gets called by update once its made the first move (very hobo)
+		if (delay == -2) { //reset the delay
 			delay = 0;
 		}
-		moveActual(moveParams[0],moveParams[1],moveParams[2]);
-		if (moveParams[3] >= 0) {
+		moveActual(moveParams[0],moveParams[1],moveParams[2]); //make the current move
+		if (moveParams[3] >= 0) { //if we have more moves to go, get the next move ready, working backwards through the moves array (1st element is destination, last is start)
 			moveParams[0] = moves[moveParams[3]][0];
 			moveParams[1] = moves[moveParams[3]][1];
-			moveParams[3] = moveParams[3]-1;
-			delay = 9;
+			moveParams[3] = moveParams[3]-1; //and we have one less move remaining
+			delay = 9; //amount of time (9/60 seconds) between each move
 		}
-		else if (moveParams[3] == -1) {
-			moveOver();
+		else if (moveParams[3] == -1) { //if we've made our last move
+			moveOver(); //end the move
 		}
 }
 
 function moveActual(x,y,given) { //actually moves the unit's image on the screen
-	given.x = toPixel(x,globalOffsetX) + ((spaceSize-given.width)/2);
+	given.x = toPixel(x,globalOffsetX) + ((spaceSize-given.width)/2); //move the unit
 	given.y = toPixel(y,globalOffsetY) + ((spaceSize-given.height)/2);
-	if (given.type == "player") {
+	if (given.type == "player") { //move its hp display to stay with it
 		playerHP[selectedUnit].x = toPixel(x,globalOffsetX) + 32;
 		playerHP[selectedUnit].y = toPixel(y,globalOffsetY) + 57;
 	}
-	else {
+	else { //enemy units use different hp array
 		enemyHP[currentEnemy].x = toPixel(x,globalOffsetX) + 32;
 		enemyHP[currentEnemy].y = toPixel(y,globalOffsetY) + 57;
 	}
 }
 
+function moveOver() {
+	entityLayer[moves[0][0]][moves[0][1]] = selectedUnit; //update the units position in the entity layer
+	moves = []; //reset everything
+	phase = 0;
+	delay = -2;
+	if (!attacking) //if we don't need to make an attack after this
+		playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage; //make our unit show that its done moving 
+}
+
+function isAttackable(givenX, givenY) { //returns whether space can be attacked 
+	for (var i = 0; i < attackableSpaces.length; i++) { //look through all the spaces that can be attacked 
+		if (attackableSpaces[i].x == givenX && attackableSpaces[i].y == givenY) { //see if we can find the space we were given
+			return attackableSpaces[i]; //if so return it
+		}
+	}
+	return false; //otherwise return false
+}
 
 function makeAttack(tar, atk) {
 	var target = tar;
-	if (target < -1) {
-		target = (target+2)*-1;
+	if (target < -1) { //if it's an enemy unit
+		target = (target+2)*-1; //we need to do this to convert entityLayer # into array position #
 	}
-	var attacker = playerUnits[atk].stats;
-	var total = parseInt(enemyHP[target].text)-attacker.attack;
-	hpToSet = [enemyHP[target], total, target];
-}
-
-function killUnit(x,y) {
-	var unit = entityLayer[x][y];
-	if (unit < -1) 
-		unit = (unit+2)*-1;
-	
-	entityLayer[x][y] = -1;
+	var attacker = playerUnits[atk].stats; //need stats for attacking unit
+	var total = parseInt(enemyHP[target].text)-attacker.attack; //calculates how much health unit will have after attack NOTE: here's where to add more complex math (def, terrain def, ect)
+	hpToSet = [enemyHP[target], total, target]; //remember what the hp should be set to (the number we just calculated), and which unit's hp will be set
 }
 
 function refreshUnitMoved () {
 	var allMoved = true;
-	for (var i = 0; i < unitMoved.length; i++) {
+	for (var i = 0; i < unitMoved.length; i++) { //check if any units have moved
 		if (!unitMoved[i]) {
 			allMoved = false;
 		}
 	}
 	
-	if (allMoved) {
+	if (allMoved) { //if every unit has moved
 		for (var i = 0; i < unitMoved.length; i++) {
-			unitMoved[i] = 0;
+			unitMoved[i] = 0; //set it so none of them have moved
 		}
-		turnOver = 1;
+		turnOver = 1; //and also the turn is over 
 	}
 }
 
 function endTurn() {
-	for (var i = 0; i < unitMoved.length; i++) {
+	for (var i = 0; i < unitMoved.length; i++) { //change all the unit images back to unmoved 
 		playerUnits[i].image.src = playerUnits[i].stats.image;
 	}
 	
-	turnCardOn = true;
-	refreshIncome();
+	turnCardOn = true; //turn on turn card
+	refreshIncome(); //update income and gold
 	gold += income;
 	goldText.text = "Gold: " + gold;
 }
 
-function refreshIncome() {
+function refreshIncome() { //checks how many buildings the player controls and adds them up to get income
 	income = 0;
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
@@ -1063,7 +1072,7 @@ function refreshIncome() {
 only works for last one
 */
 
-function enemyTurn () {
+function enemyTurn () { //This is kind of a shit show and not currently a priority, due for major re-write
 	var curr;
 	for (var i = 0; i < enemyUnits.length; i++) {
 		curr = enemyUnits[i];
@@ -1075,25 +1084,7 @@ function enemyTurn () {
 	}
 }
 
-function moveOver() {
-	entityLayer[moves[0][0]][moves[0][1]] = selectedUnit;
-	moves = [];
-	phase = 0;
-	delay = -2;
-	if (!attacking)
-		playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage;
-}
-
-function isAttackable(givenX, givenY) {
-	for (var i = 0; i < attackableSpaces.length; i++) {
-		if (attackableSpaces[i].x == givenX && attackableSpaces[i].y == givenY) {
-			return attackableSpaces[i];
-		}
-	}
-	return false;
-}
-
-function clearMoveable() {
+function clearMoveable() { //resets all the array used in movement functions
 	for (var i = 0; i < boardRows; i++) {
 		for (var j = 0; j < boardCols; j++) {
 			movementHighlights = [];
@@ -1104,7 +1095,7 @@ function clearMoveable() {
 	attackHighlights = [];
 }
 
-function arrayCompare (array1, array2) { //array1 == array2 doesn't work the way you would hope so this does that (works for nested arrays)
+function arrayCompare (array1, array2) { //array1 == array2 doesn't work the way you would hope, so this does that (checks if elements are same & same order, works for nested arrays)
 	if (!array1 || !array2)
 		return false;
 	
@@ -1124,11 +1115,11 @@ function arrayCompare (array1, array2) { //array1 == array2 doesn't work the way
 	return true;
 }
 
-function toPixel (given,offset) {
+function toPixel (given,offset) { //takes a location on the board and converts it to a location in pixels
 	return given*spaceSize + offset;
 }
 
-function toSpace(given,offset) {
+function toSpace(given,offset) { //takes a location in pixels and converts it into a location on the board
 	return parseInt((given-offset)/spaceSize);
 }
 
