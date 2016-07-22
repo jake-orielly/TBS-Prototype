@@ -6,6 +6,7 @@ Units can not stand still //No end turn early option
 Can't produce a unit if you already moved all your units
 It is not possible for a unit to use some of its movement, then the rest 
 Attack and move should be separate commands so that players have the opportunity to place their units in better locations
+Unit stacking when attacking with top left soldier then bottom right
 
 Important Issues:
 Unable to see unit costs or what each building is worth in terms of income
@@ -16,8 +17,6 @@ Enemy Knight can't be attacked //might be intentional due to the Knight being th
 ^Leads to enemy knight stacking on your unit
 
 Victory Conditions?
-
-Unit stacking when attacking with top left soldier then bottom right
 
 Resolved:
 Issue: Whichever unit the player moves last shows as having moved on day 2 even though it has moved day 1 (issue is purely visual, unit can still be moved)
