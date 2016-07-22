@@ -2,10 +2,6 @@ Bugs Dao is working on: //Jake: figured we should have some way to make sure we 
 
 Bugs Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
-Units can not stand still //No end turn early option
-Can't produce a unit if you already moved all your units
-It is not possible for a unit to use some of its movement, then the rest 
-Attack and move should be separate commands so that players have the opportunity to place their units in better locations
 Unit stacking when attacking with top left soldier then bottom right
 
 Important Issues:
@@ -19,6 +15,19 @@ Enemy Knight can't be attacked //might be intentional due to the Knight being th
 Victory Conditions?
 
 Resolved:
+Issue: Units can not stand still //No end turn early option
+Fix: The turn now ends when you press space or enter
+
+Issue: Can't produce a unit if you already moved all your units
+Fix: Same as above
+
+Issue: It is not possible for a unit to use some of its movement, then the rest 
+Fix: unitMoved has been reworked so that now it represents how much movement a unit has left. It is only marked as moved if it attacks, or uses all its moves and is not within attack range of an enemy.
+
+Issue: Attack and move should be separate commands so that players have the opportunity to place their units in bet
+ter locations
+Fix: Above changes make it so that you can attack the old way or move to a square then attack
+
 Issue: Whichever unit the player moves last shows as having moved on day 2 even though it has moved day 1 (issue is purely visual, unit can still be moved)
 Fix: Issue was caused by enemyTurn, which has been temporarily disabled, until rest of game is relatively non-buggy
 
