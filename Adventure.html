@@ -897,7 +897,8 @@ function getAttackable() {
 			var currAtk;
 			
 			if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space is on board
-			&& entityLayer[currX][currY] < -1) { //and there's an enemy there
+			&& entityLayer[currX][currY] < -1 //and there's an enemy there
+			&& !(entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] > -1)) { //and our destination won't have a friendly unit (aka no unit stacking)
 				newAttackable = {destination: moveableSpaces[i], x: currX, y: currY}; //create a new attackable object (destination is the square moved to adjacent to the target being attacked)
 				for (var l = 0; l < attackableSpaces.length; l++) { //for each object in the array of all attackable spaces
 					currAtk = attackableSpaces[l]; //set that one to our current
