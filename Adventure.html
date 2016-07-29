@@ -225,6 +225,7 @@ function startGame() { //called when the game starts
 		factoryUnitStats[i][1] = new component("900 32px", "Courier New", "white", toPixel(4,30), toPixel(i*2 + 4,45), "text", units[i].movement);
 		factoryUnitStats[i][2] = new component("900 32px", "Courier New", "white", toPixel(5,25), toPixel(i*2 + 4,45), "text", units[i].defense);
 		factoryUnitStats[i][3] = new component("900 32px", "Courier New", "white", toPixel(6,27), toPixel(i*2 + 4,45), "text", units[i].sight);
+		factoryUnitStats[i][4] = new component("900 32px", "Courier New", "black", toPixel(7,10), toPixel(i*2 + 4,45), "text", "Cost: " + units[i].cost);
 	}
 	
 	//The turn card is displayed at the end of each turn and shows what turn it is
@@ -410,6 +411,8 @@ function component(width, height, color, x, y, type, unit) { //Components are el
 				ctx.fillStyle = "rgba(106, 107, 107, 1)";
 			else if (color == "solidRed")
 				ctx.fillStyle = "rgba(209, 21, 30, 1)";
+			else if (color == "solidGold")
+				ctx.fillStyle = "rgba(255,215,0,1)";
 			else 
 				ctx.fillStyle = color;
 			ctx.fillText(this.text, this.x, this.y);
@@ -895,10 +898,10 @@ function getAttackable() {
 			currY = moveableSpaces[i].y + spaceOffset[k][1];
 			var found = false;
 			var currAtk;
-			
 			if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space is on board
 			&& entityLayer[currX][currY] < -1 //and there's an enemy there
-			&& !(entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] > -1)) { //and our destination won't have a friendly unit (aka no unit stacking)
+			&& !(entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] > -1 //and our destination won't have a friendly unit (aka no unit stacking)
+				&& (entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] != selectedUnit))) { //make sure we don't count the moving unit as a friendly unit in the way
 				newAttackable = {destination: moveableSpaces[i], x: currX, y: currY}; //create a new attackable object (destination is the square moved to adjacent to the target being attacked)
 				for (var l = 0; l < attackableSpaces.length; l++) { //for each object in the array of all attackable spaces
 					currAtk = attackableSpaces[l]; //set that one to our current
