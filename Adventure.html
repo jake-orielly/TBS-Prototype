@@ -140,6 +140,11 @@ var goldText;
 var income; 
 var incomeText;
 
+//Variables used in enemy turn
+var currentEnemy;
+var curr;
+var enemiesMoving;
+
 //These objects store the stats for each unit, as well as the display images, and their cost to produce
 var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", enemyImage: "soldierEnemy.png", name: "Light Infantry", cost: 300};
 var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", movedImage: "knightMoved.png", enemyImage: "knightEnemy.png", name: "Heavy Infantry", cost: 600};
@@ -154,6 +159,7 @@ function startGame() { //called when the game starts
 	frame = 0; 
 	turnNumber = 1;
 	gold = 500;
+	enemiesMoving = 0;
 	
 	if (boardRows * spaceSize > window.innerWidth) //if the board is wider than the screen
 		boardX = parseInt(window.innerWidth/spaceSize)*spaceSize; //make the display area however many squares we can fit on the screen 
@@ -496,6 +502,8 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 				if (captureCounter.text == Math.abs(captureVal)) { //If we just finished
 					capturing = -2; //Note that we're no longer capturing anything
 					delay = -2;	//and things no longer have to wait for it to be done
+					unitMoved[selectedUnit] = 0; //after capturing set the unit as having been moved this turn
+					playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].text.movedImage;
 				}
 			}
 			else if (capturing < 0) {
@@ -540,7 +548,7 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 			turnNumber++; //another turn has passed
 			turnText.text = "DAY " + turnNumber; //update the turn card to show this
 			turnOver = 0; //and the turn is no longer over
-			//enemyTurn(); //now its the enemy turn NOTE: temporarily disabled
+			enemyTurn(); //now its the enemy turn NOTE: temporarily disabled
 		}
 	}
 	
@@ -560,6 +568,10 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 			playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].text.movedImage;
 			hpToSet = [];
 		}
+	}
+	
+	if (delay < 0 && enemiesMoving && currentEnemy < enemyUnits.length-1) {
+		enemyMove();
 	}
 	
 	if (turnCardOn) { //If we're showing the turn card
@@ -1102,15 +1114,18 @@ only works for last one
 */
 
 function enemyTurn () { //This is kind of a shit show and not currently a priority, due for major re-write
-	var curr;
-	for (var i = 0; i < enemyUnits.length; i++) {
-		curr = enemyUnits[i];
-		currentEnemy = i;
-		moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]];
-		entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
-		moveParams = [toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY),curr,moves.length-1];
-		executeMoves();
-	}
+	currentEnemy = -1;
+	enemiesMoving = 1;
+	enemyMove();
+}
+
+function enemyMove () { //shitshow part 2, the shit continues
+	currentEnemy++;
+	curr = enemyUnits[currentEnemy];
+	moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]];
+	entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+	moveParams = [toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY),curr,moves.length-1];
+	executeMoves();
 }
 
 function clearMoveable() { //resets all the array used in movement functions
