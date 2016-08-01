@@ -1,21 +1,19 @@
 Bugs Dao is working on: //Jake: figured we should have some way to make sure we don't fix the same bug twice
 
-Bugs Jake is working on:
+Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
+Enemy movement
+When enemies move entityLayer is not updated (easy fix but I have to go to work)
+aka "Enemy Knight can't be attacked"
+Enemy units can stack
 
 Important Issues:
 Unable to see what each building is worth in terms of income
 Unintuitive as to how quickly units can take buildings
 Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 ^Results in being unable to move some of the spawned units and preventing the next turn from being possible
-Enemy Knight can't be attacked //might be intentional due to the Knight being the piece that moves during enemy turns
-^Leads to enemy knight stacking on your unit
-Can capture then move
 Can't move onto town and not capture
 
 
 Victory Conditions?
-
-Recently Resolved:
-Unit stacking
-Can't view unit cost
+Can capture then move
