@@ -6,6 +6,7 @@ Enemy movement
 When enemies move entityLayer is not updated (easy fix but I have to go to work)
 aka "Enemy Knight can't be attacked"
 Enemy units can stack
+Enemy units only move one space at a time
 
 Important Issues:
 Unable to see what each building is worth in terms of income
