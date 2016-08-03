@@ -144,6 +144,7 @@ var incomeText;
 var currentEnemy;
 var curr;
 var enemiesMoving;
+var currMove = 0;
 
 //These objects store the stats for each unit, as well as the display images, and their cost to produce
 var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", enemyImage: "soldierEnemy.png", name: "Light Infantry", cost: 300};
@@ -570,7 +571,7 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 		}
 	}
 	
-	if (delay < 0 && enemiesMoving && currentEnemy < enemyUnits.length-1) {
+	if (delay < 0 && enemiesMoving && currentEnemy < enemyUnits.length) {
 		enemyMove();
 	}
 	
@@ -1058,7 +1059,10 @@ function moveActual(x,y,given) { //actually moves the unit's image on the screen
 }
 
 function moveOver() {
-	entityLayer[moves[0][0]][moves[0][1]] = selectedUnit; //update the units position in the entity layer
+	if (!enemiesMoving)
+		entityLayer[moves[0][0]][moves[0][1]] = selectedUnit; //update the units position in the entity layer
+	else  //if its an enemy that's moving
+		entityLayer[moves[0][0]][moves[0][1]] = (currentEnemy*-1)-2; //do the same
 	delay = -2;
 	phase = 0;
 	if (forceClickX == moves[0][0] && forceClickY == moves[0][1]) //this is the case where a unit has moved and now will want to attack
@@ -1120,12 +1124,20 @@ function enemyTurn () { //This is kind of a shit show and not currently a priori
 }
 
 function enemyMove () { //shitshow part 2, the shit continues
-	currentEnemy++;
-	curr = enemyUnits[currentEnemy];
-	moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]];
-	entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
-	moveParams = [toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY),curr,moves.length-1];
-	executeMoves();
+	if (currMove <= 0) {
+		currentEnemy++;
+		curr = enemyUnits[currentEnemy];
+		currMove = curr.stats.movement;
+	}
+	else {
+		moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]];
+		moveParams = [toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY),curr,moves.length-1];
+		currMove = currMove - terrainCost[board[moves[0][0]][moves[0][1]]];
+		if (entityLayer[moves[0][0]][moves[0][1]] == -1) {
+			entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
+			executeMoves();
+		}
+	}
 }
 
 function clearMoveable() { //resets all the array used in movement functions
