@@ -5,10 +5,7 @@ Potential screen at start just to explain basics of the game?
 
 Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
-Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 Enemy movement
-attacking an enemy that has moved causes the unit to become attackable
-move highlights & path are not cleared by enemy turn
 
 Important Issues:
 Unable to see what each building is worth in terms of income
@@ -20,8 +17,7 @@ Can't move onto town and not capture
 Victory Conditions?
 
 Resolved by most recent commit:
-When enemies move entityLayer is not updated (easy fix but I have to go to work)
-aka "Enemy Knight can't be attacked"
-Enemy units can stack
-Enemy units only move one space at a time
-Can capture then move
+Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
+attacking an enemy that has moved causes the unit to become attackable
+move highlights & path are not cleared by enemy turn
+spamming end turn button breaks game
