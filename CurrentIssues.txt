@@ -6,6 +6,7 @@ Potential screen at start just to explain basics of the game?
 Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
+When attacking adjacent enemies friendly units will move to another space where they can attack
 
 Important Issues:
 Unable to see what each building is worth in terms of income
