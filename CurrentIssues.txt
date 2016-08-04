@@ -1,4 +1,7 @@
 Bugs Dao is working on: //Jake: figured we should have some way to make sure we don't fix the same bug twice
+commenting for general usage
+fog of war implementation? //set as separate branch
+Potential screen at start just to explain basics of the game?
 
 Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
@@ -8,7 +11,7 @@ move highlights & path are not cleared by enemy turn
 
 Important Issues:
 Unable to see what each building is worth in terms of income
-Unintuitive as to how quickly units can take buildings
+Unintuitive as to how quickly units can take buildings  
 Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
 ^Results in being unable to move some of the spawned units and preventing the next turn from being possible
 Can't move onto town and not capture
