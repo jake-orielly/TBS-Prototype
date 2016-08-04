@@ -574,6 +574,8 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 	if (delay < 0 && enemiesMoving && currentEnemy < enemyUnits.length) {
 		enemyMove();
 	}
+	else if (currentEnemy == enemyUnits.length)
+		enemiesMoving = 0;
 	
 	if (turnCardOn) { //If we're showing the turn card
 		turnCard.update(); //Re-draw it
@@ -618,7 +620,7 @@ function handleInput() { //called when a key is pressed
 	} 
 	else if (globalSpeedX == -1*scrollSpeed) {globalSpeedX = 0;}
 
-	if ((gameArea.keys[13] || gameArea.keys[32]) && delay < 0) {
+	if ((gameArea.keys[13] || gameArea.keys[32]) && delay < 0 && !enemiesMoving) {
 		turnOver = 2;
 	}
 }
@@ -700,7 +702,7 @@ function clicked(event) { //called any time the user clicks
 		}
 		else 
 			var y = toSpace(event.clientY, globalOffsetY);
-			
+
 		if (buildingUnit) { //if the building unit window is open
 			if (x < 2 || y < 2 || y > 9 || x > 10){ //user clicks outside the building unit window
 				buildingUnit = false; //close the building unit window
@@ -716,7 +718,7 @@ function clicked(event) { //called any time the user clicks
 					toBuild = 2;
 				}
 				
-				if (gold >= units[toBuild].cost) { //if they have enough money to build the unit
+				if (gold >= units[toBuild].cost && entityLayer[factoryX][factoryY] == -1) { //if they have enough money to build the unit
 					newPlayerUnit(factoryX, factoryY, toBuild); //build it
 					unitMoved[unitMoved.length-1] = 0;
 					gold -= units[toBuild].cost; //and take the money
@@ -732,10 +734,10 @@ function clicked(event) { //called any time the user clicks
 				selectedUnit = entityLayer[x][y]; //the unit clicked on becomes the selected unit
 				highlightMoveable(x,y);	//this function will draw the squares that represent where the unit can move
 				terrainCardOn = false; //stop showing the terrain card
-				unitCardAttack.text = playerUnits[entityLayer[x][y]].stats.attack; //set each element of the unit card
-				unitCardDef.text = playerUnits[entityLayer[x][y]].stats.defense;
-				unitCardMove.text = playerUnits[entityLayer[x][y]].stats.movement;
-				unitCardSight.text = playerUnits[entityLayer[x][y]].stats.sight;
+				unitCardAttack.text = playerUnits[selectedUnit].stats.attack; //set each element of the unit card
+				unitCardDef.text = playerUnits[selectedUnit].stats.defense;
+				unitCardMove.text = playerUnits[selectedUnit].stats.movement;
+				unitCardSight.text = playerUnits[selectedUnit].stats.sight;
 				unitCardOn = 1; //start showing the unit card
 				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none"); //highlight the selected unit
 				phase++;
@@ -750,7 +752,7 @@ function clicked(event) { //called any time the user clicks
 				unitCardOn = 1; //start showing the unit card
 				movementHighlights[movementHighlights.length] = new component(spaceSize, spaceSize, "gold", toPixel(x,globalOffsetX), toPixel(y,globalOffsetY), "square", "none"); //highlight the selected unit
 			}
-			else if (board[x][y] == 5) { //if clicked on a friendly barracks/factory
+			else if (board[x][y] == 5 && entityLayer[x][y] == -1) { //if clicked on a friendly barracks/factory and no unit there
 				factoryX = x; //remember where the factory is for later
 				factoryY = y;
 				buildingUnit = true; //and show the factory window
@@ -1061,7 +1063,7 @@ function moveActual(x,y,given) { //actually moves the unit's image on the screen
 function moveOver() {
 	if (!enemiesMoving)
 		entityLayer[moves[0][0]][moves[0][1]] = selectedUnit; //update the units position in the entity layer
-	else  //if its an enemy that's moving
+	else //if its an enemy that's moving
 		entityLayer[moves[0][0]][moves[0][1]] = (currentEnemy*-1)-2; //do the same
 	delay = -2;
 	phase = 0;
@@ -1117,23 +1119,27 @@ function refreshIncome() { //checks how many buildings the player controls and a
 only works for last one
 */
 
-function enemyTurn () { //This is kind of a shit show and not currently a priority, due for major re-write
+function enemyTurn () { //Called when the enemy turn starts
 	currentEnemy = -1;
 	enemiesMoving = 1;
+	clearMoveable(); //make sure we clear all the player movement UI before we start moving
+	moves = [];
+	path = [];
+	phase = 0
 	enemyMove();
 }
 
-function enemyMove () { //shitshow part 2, the shit continues
-	if (currMove <= 0) {
+function enemyMove () { //called each time an enemy makes a move (once per space)
+	if (currMove <= 0) { //if the last unit is out of moves go to the next unit
 		currentEnemy++;
 		curr = enemyUnits[currentEnemy];
-		currMove = curr.stats.movement;
+		currMove = curr.stats.movement; 
 	}
 	else {
-		moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]];
+		moves = [[toSpace(curr.x,globalOffsetX)-1,toSpace(curr.y,globalOffsetY)],[toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY)]]; //move one to the right (should be replaced by some kind of AI pathing functino)
 		moveParams = [toSpace(curr.x,globalOffsetX),toSpace(curr.y,globalOffsetY),curr,moves.length-1];
-		currMove = currMove - terrainCost[board[moves[0][0]][moves[0][1]]];
-		if (entityLayer[moves[0][0]][moves[0][1]] == -1) {
+		currMove = currMove - terrainCost[board[moves[0][0]][moves[0][1]]]; //subtract the terrain cost
+		if (entityLayer[moves[0][0]][moves[0][1]] == -1) { //only make the move if we won't stack
 			entityLayer[moves[moves.length-1][0]][moves[moves.length-1][1]] = -1;
 			executeMoves();
 		}
