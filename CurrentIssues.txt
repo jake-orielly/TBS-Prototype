@@ -6,7 +6,11 @@ Potential screen at start just to explain basics of the game?
 Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
-When attacking adjacent enemies friendly units will move to another space where they can attack
+Enemy units move in order they are in array, regardless of if there is a better one
+Enemy units all move twoards a single hard coded destination (not a bug really, needs to be implemented)
+Enemy units can't capture
+Enemy units can't attack
+
 
 Important Issues:
 Unable to see what each building is worth in terms of income
@@ -18,7 +22,4 @@ Can't move onto town and not capture
 Victory Conditions?
 
 Resolved by most recent commit:
-Multiple units can be spawned in a row on one turn from a single spawn point, thus allowing unit stacking
-attacking an enemy that has moved causes the unit to become attackable
-move highlights & path are not cleared by enemy turn
-spamming end turn button breaks game
+When attacking adjacent enemies friendly units will move to another space where they can attack
