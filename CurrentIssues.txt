@@ -7,9 +7,12 @@ Jake is working on:
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
 Enemy units move in order they are in array, regardless of if there is a better one
-Enemy units all move twoards a single hard coded destination (not a bug really, needs to be implemented)
-Enemy units can't capture
 Enemy units can't attack
+enemy units can move through friendly
+plan destination is stupid simple
+enemy doesn't build units
+no win/loss
+unit moving off structure doesn't affect capture hp
 
 
 Important Issues:
