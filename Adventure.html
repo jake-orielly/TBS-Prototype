@@ -144,6 +144,7 @@ var incomeText;
 var currentEnemy;
 var curr;
 var enemiesMoving;
+var dest;
 
 //These objects store the stats for each unit, as well as the display images, and their cost to produce
 var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", enemyImage: "soldierEnemy.png", name: "Light Infantry", cost: 300};
@@ -335,9 +336,7 @@ function mapStructures() { //Fills structureMap[] to represent building location
 	for (var i = 0; i < boardRows; i++) {
 		structureMap[i] = [];
 		for (var j = 0; j < boardCols; j++) {
-			if (board[i][j] > 6) 
-				structureMap[i][j] = -20;
-			else if (board[i][j] > 3)
+			if (board[i][j] > 3)
 				structureMap[i][j] = 20;
 			else 
 				structureMap[i][j] = 0;
@@ -499,11 +498,17 @@ function updateGameArea() { //Called to draw each new frame on the canvas
 		if (frame % 7 == 0) { //once every 7 frames (change this to speed up or slow down rate at which capture graphic ticks, more frames, slower ticks)
 			if (capturing > 0) { //If we're not done
 				captureCounter.text = captureCounter.text-1; //change the text
-				if (captureCounter.text == Math.abs(captureVal)) { //If we just finished
+				if (captureCounter.text == captureVal) { //If we just finished
 					capturing = -2; //Note that we're no longer capturing anything
 					delay = -2;	//and things no longer have to wait for it to be done
-					unitMoved[selectedUnit] = 0; //after capturing set the unit as having been moved this turn
-					playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].text.movedImage;
+					if (!enemiesMoving) {
+						unitMoved[selectedUnit] = 0; //after capturing set the unit as having been moved this turn
+						playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].text.movedImage;
+					}
+					else {
+						capturing = 0;
+						moveOver();
+					}
 				}
 			}
 			else if (capturing < 0) {
@@ -800,7 +805,7 @@ function clicked(event) { //called any time the user clicks
 				clearMoveable(); //no longer need to show moveable squares for same reason
 				unitCardOn = 0;
 				executeMoves(); //move has been confirmed, so make it
-				if(structureMap[x][y] < 0) { //if moving onto a structure, capture it
+				if(structureMap[x][y] > 0 && board[x][y] > 6) { //if moving onto a structure, capture it
 					captureStructure(x,y);
 				}
 				unitMoved[selectedUnit] = unitMoved[selectedUnit] - (moves.length-1); //mark the unit as having moved
@@ -958,30 +963,36 @@ function checkAttackable(givenX, givenY) {
 function captureStructure(x,y) {
 	capturing = 1; //remember that we're capturing something
 	captureCounter.text = Math.abs(structureMap[x][y]); //Set our # display for capturing 
-	captureVal = structureMap[x][y] + 10; //establish how much progress we need to make twoards capturing NOTE: this should not be hardcoded as 10, will not work with enemy
+	captureVal = structureMap[x][y] - 10; //establish how much progress we need to make twoards capturing NOTE: this should not be hardcoded as 10, will not work with enemy
 	structureMap[x][y] = captureVal; //change structureMap to reflect the progress we're going to make later on
-	if (board[x][y] > 8) { //if the structure is an enemy one, make the graphics red
-		for (var i = 0; i < 20; i++) {
-			captureBar[i] = new component(64, 10, "solidRed", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none"); //This is an awful clumsy way to do this but had problems w/ edit
-		}
-		captureCounter = new component("900 32px", "Courier New", "solidRed", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
-	}
-	else if (board[x][y] > 6) { //if the structure is a neutral one, make the graphics grey 
-		for (var i = 0; i < 20; i++) {
-			captureBar[i] = new component(64, 10, "solidGrey", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none");
-		}
-		captureCounter = new component("900 32px", "Courier New", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
-	}
+	var color; 
 	
-	if (structureMap[x][y] >= 0) { //if we finished capturing it 
-		if (board[x][y] > 8) { //if its enemy 
+	if (board[x][y] > 8) //if the structure is an enemy one, make the graphics red
+		color = "solidRed";
+	else if (board[x][y] > 6) //if the structure is a neutral one, make the graphics grey 
+		color = "solidGrey";
+	else 
+		color = "solidBlue";
+
+	for (var i = 0; i < 20; i++) {
+		captureBar[i] = new component(64, 10, color, toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none"); //This is an awful clumsy way to do this but had problems w/ edit
+	}
+	captureCounter = new component("900 32px", "Courier New", color, toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", captureCounter.text);
+
+	if (!enemiesMoving && structureMap[x][y] <= 0) { //if we finished capturing it 
+		if (board[x][y] > 8)  //if its enemy 
 			board[x][y] = board[x][y]-5; //change to friendly
-			spaces[x][y].image.src = terrainImg[board[x][y]];
-		}
-		else if (board[x][y] > 6) {//if its neutral
+		else if (board[x][y] > 6) //if its neutral
 			board[x][y] = board[x][y]-2; //change to friendly
-			spaces[x][y].image.src = terrainImg[board[x][y]];
-		}
+		spaces[x][y].image.src = terrainImg[board[x][y]];
+	}
+	else if (structureMap[x][y] <= 0) { //same as above for enemy
+		if (board[x][y] < 7)
+			board[x][y] = board[x][y]+5;
+		else if (board[x][y] < 9)  
+			board[x][y] = board[x][y]+3;
+
+		spaces[x][y].image.src = terrainImg[board[x][y]];
 	}
 }
 
@@ -1047,7 +1058,10 @@ function executeMoves () { //gets called by update once its made the first move 
 			delay = 9; //amount of time (9/60 seconds) between each move
 		}
 		else if (moveParams[3] == -1) { //if we've made our last move
-			moveOver(); //end the move
+			if (enemiesMoving && board[moves[0][0]][moves[0][1]] >= 4 && board[moves[0][0]][moves[0][1]] <= 8 && !capturing) //if enemy is ending move on a capturable building and should start capturing
+				captureStructure(moves[0][0],moves[0][1]); //capture it
+			else if (!capturing)
+				moveOver(); //end the move
 		}
 }
 
@@ -1076,7 +1090,7 @@ function moveOver() {
 	moves = []; //reset everything
 	if (!enemiesMoving && !unitMoved[selectedUnit]) //if we don't need to make an attack after this
 		playerUnits[selectedUnit].image.src = playerUnits[selectedUnit].stats.movedImage; //make our unit show that its done moving 
-	if (enemiesMoving) 
+	if (enemiesMoving)
 		enemyMove();
 }
 
@@ -1121,10 +1135,6 @@ function refreshIncome() { //checks how many buildings the player controls and a
 	incomeText.text = "Income: " + income;
 }
 
-/*known bugs
-only works for last one
-*/
-
 function enemyTurn () { //Called when the enemy turn starts
 	currentEnemy = -1;
 	enemiesMoving = 1;
@@ -1149,16 +1159,31 @@ function enemyMove () { //called each time an enemy makes a move (once per space
 }
 
 function getDestination() {
-	var dest = [6,11];
+	dest = planDestination();
 	var currDest = [moveableSpaces[0].x,moveableSpaces[0].y];
 	
-	for (var i = 0; i < moveableSpaces.length; i++) {
+	for (var i = 0; i < moveableSpaces.length; i++) { //TODO make getDestination more complex
 		if (Math.abs(moveableSpaces[i].x - dest[0]) + Math.abs(moveableSpaces[i].y - dest[1]) <
 			Math.abs(currDest[0] - dest[0]) + Math.abs(currDest[1] - dest[1])) {
 				currDest = [moveableSpaces[i].x,moveableSpaces[i].y];
 		}
 	}
+	for (var i = 0; i < moveableSpaces.length; i++) {
+		if (entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] == -1 &&
+			(board[currDest[0]][currDest[1]] < 4 && //if the current destination isn't a building enemy can capture
+			board[moveableSpaces[i].x][moveableSpaces[i].y] >= 4 && board[moveableSpaces[i].x][moveableSpaces[i].y] <= 8) || //and we find one that is
+			(board[moveableSpaces[i].x][moveableSpaces[i].y] >= 4 && board[moveableSpaces[i].x][moveableSpaces[i].y] <= 8 
+			&& board[moveableSpaces[i].x][moveableSpaces[i].y] < board[currDest[0]][currDest[1]])) //or one that's more valuable
+			currDest = [moveableSpaces[i].x,moveableSpaces[i].y]; //that's the new destination
+	}
 	return currDest;
+}
+
+function planDestination() {
+	if (board[5][5] > 8 && board[5][7] > 8 && board[7][5] > 8 && board[7][7] > 8 && board[6][6] > 7)
+		return [1,1];
+	else 
+		return [7,6];
 }
 
 function clearMoveable() { //resets all the array used in movement functions
