@@ -10,7 +10,7 @@ Enemy units move in order they are in array, regardless of if there is a better 
 Enemy units can't attack
 enemy units can move through friendly
 plan destination is stupid simple
-enemy doesn't build units
+buildEnemyUnits broken af
 no win/loss
 unit moving off structure doesn't affect capture hp
 
