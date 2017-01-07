@@ -4,6 +4,7 @@ fog of war implementation? //set as separate branch
 Potential screen at start just to explain basics of the game?
 
 Jake is working on:
+Loads with some squares not displayed, if you zoom out in browser and reload shows those squares
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
 Enemy units move in order they are in array, regardless of if there is a better one

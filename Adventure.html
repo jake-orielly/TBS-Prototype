@@ -84,10 +84,10 @@ var fogMap = [];
 var fogLayer = [];
 
 //Image for each type of space(/terrain)
-var terrainImg = ["grass.png", "trees.png", "mountain.png","river.png",
-"friendlyCastle.png","friendlyBarracks.png","friendlyVillage.png",
-"barracks.png","village.png", 
-"enemyCastle.png", "enemyBarracks.png","enemyVillage.png"];
+var terrainImg = ["art/grass.png", "art/trees.png", "art/mountain.png","art/river.png",
+"art/friendlyCastle.png","art/friendlyBarracks.png","art/friendlyVillage.png",
+"art/barracks.png","art/village.png", 
+"art/enemyCastle.png", "art/enemyBarracks.png","art/enemyVillage.png"];
 //Movement cost of space types, currently stats for friendly, neutral, and enemy structures is the same
 //But it might make sense to have them differ
 var terrainCost = [1,2,3,"X", //terrain
@@ -148,9 +148,9 @@ var dest;
 var enemyGold;
 
 //These objects store the stats for each unit, as well as the display images, and their cost to produce
-var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "soldier.png", movedImage: "soldierMoved.png", enemyImage: "soldierEnemy.png", name: "Light Infantry", cost: 300};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "knight.png", movedImage: "knightMoved.png", enemyImage: "knightEnemy.png", name: "Heavy Infantry", cost: 600};
-var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "cavalry.png", movedImage: "cavalryMoved.png", enemyImage: "cavalryEnemy.png", name: "Cavalry", cost: 1000};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "art/soldier.png", movedImage: "art/soldierMoved.png", enemyImage: "art/soldierEnemy.png", name: "Light Infantry", cost: 300};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "art/knight.png", movedImage: "art/knightMoved.png", enemyImage: "art/knightEnemy.png", name: "Heavy Infantry", cost: 600};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "art/cavalry.png", movedImage: "art/cavalryMoved.png", enemyImage: "art/cavalryEnemy.png", name: "Cavalry", cost: 1000};
 var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
 
 var units = [infantry, heavyInfantry, cavalry];
@@ -203,12 +203,12 @@ function startGame() { //called when the game starts
 	//This section is the decleration of all the visual elements we will need to render on the canvas
 	
 	//The terrain card is a window that appears when a piece of terrain is selected, that displays its stats, these are the visual components that make up the card
-	terrainCard = new component(64, 128, "terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
+	terrainCard = new component(64, 128, "art/terrainCard.png", boardX-spaceSize, boardY-spaceSize*2, "none", "none");
 	terrainCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
 	terrainCardDef = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 103, "text", "3");
 	
 	//The unit card is the terrain card but for a unit
-	unitCard = new component(128, 128, "unitCard.png", boardX-spaceSize*2, boardY-spaceSize*2, "none", "none");
+	unitCard = new component(128, 128, "art/unitCard.png", boardX-spaceSize*2, boardY-spaceSize*2, "none", "none");
 	unitCardAttack = new component("900 32px", "Courier New", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 48, "text", "1");
 	unitCardDef = new component("900 32px", "Courier New", "white", boardX-spaceSize*2 + 37, boardY-spaceSize*2 + 103, "text", "2");
 	unitCardMove = new component("900 32px", "Courier New", "white", boardX-spaceSize + 35, boardY-spaceSize*2 + 48, "text", "3");
@@ -219,17 +219,17 @@ function startGame() { //called when the game starts
 		captureBar[i] = new component(64, 10, "solidGrey", toPixel(12,0)-32, toPixel(12,0)-i*12, "square", "none");
 	}
 	captureCounter = new component("900 32px", "Courier New", "solidGrey", toPixel(12,0)-22, boardY-spaceSize*2 + 103, "text", "4");
-	captureCard = new component(128, 320, "captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
+	captureCard = new component(128, 320, "art/captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	
 	//The factory card is a window that shows money, income, units that can be built, and stats about those units, these are the visual components that make up the card
-	factoryCard = new component(spaceSize*9, spaceSize*8, "factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
+	factoryCard = new component(spaceSize*9, spaceSize*8, "art/factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
 	goldText = new component("900 32px", "Courier New", "black", toPixel(3,0), toPixel(2,45), "text", "Gold: " + gold);
 	incomeText = new component("900 32px", "Courier New", "black", toPixel(7,0), toPixel(2,45), "text", income);
 	for (var i = 0; i < units.length; i++) {
 		factoryCardUnits[i] = new component(50, 50, units[i].image, toPixel(3,0) + ((spaceSize-50)/2), toPixel(i*2 + 3,0) + ((spaceSize-50)/2), "player", units[i]);
-		factoryCardUnitBackgrounds[i] = new component(64, 64, "factoryCardUnitBackground.png", toPixel(3,0), toPixel(i*2 + 3,0), "none", "none");
+		factoryCardUnitBackgrounds[i] = new component(64, 64, "art/factoryCardUnitBackground.png", toPixel(3,0), toPixel(i*2 + 3,0), "none", "none");
 		factoryCardText[i] = new component("900 32px", "Courier New", "black", toPixel(4,10), toPixel(i*2 + 3,42), "text", units[i].name);
-		factoryStatCard[i] = new component(256, 64, "factoryStatCard.png", toPixel(3,0), toPixel(i*2 + 4,0), "none", "none");
+		factoryStatCard[i] = new component(256, 64, "art/factoryStatCard.png", toPixel(3,0), toPixel(i*2 + 4,0), "none", "none");
 		factoryUnitStats[i] = [];
 		factoryUnitStats[i][0] = new component("900 32px", "Courier New", "white", toPixel(3,35), toPixel(i*2 + 4,45), "text", units[i].attack);
 		factoryUnitStats[i][1] = new component("900 32px", "Courier New", "white", toPixel(4,30), toPixel(i*2 + 4,45), "text", units[i].movement);
@@ -240,7 +240,7 @@ function startGame() { //called when the game starts
 	
 	//The turn card is displayed at the end of each turn and shows what turn it is
 	turnText = new component("bold 68px", "Courier New", "black", (boardCols-2.9)*spaceSize/2, boardRows*spaceSize/2, "text", "DAY " + turnNumber);
-	turnCard = new component(spaceSize*5, spaceSize*2, "turnCard.png", (boardCols-4.8)*spaceSize/2, (boardRows-2.6)*spaceSize/2, "none", "none");
+	turnCard = new component(spaceSize*5, spaceSize*2, "art/turnCard.png", (boardCols-4.8)*spaceSize/2, (boardRows-2.6)*spaceSize/2, "none", "none");
 	
 	refreshIncome(); //Sets income text to be correct based on # of friendly structures
 	
@@ -1045,9 +1045,9 @@ function drawPath(i) {
 	
 	if (path[i] == undefined) { //if we haven't assigned this one yet
 		if (moves[i][1] != moves[i+1][1]) //if the y values of this move and the last are different
-			path[i] = new component(10, 64, "verticalLine.png", (64-10)/2 + moves[i][0]*64 + globalOffsetX, moves[i][1]*64 + globalOffsetY, "path"); //vertical path
+			path[i] = new component(10, 64, "art/verticalLine.png", (64-10)/2 + moves[i][0]*64 + globalOffsetX, moves[i][1]*64 + globalOffsetY, "path"); //vertical path
 		else
-			path[i] = new component(64, 10, "horizontalLine.png", moves[i][0]*64 + globalOffsetX, (64-10)/2 + moves[i][1]*64 + globalOffsetY, "path"); //horizonatl path
+			path[i] = new component(64, 10, "art/horizontalLine.png", moves[i][0]*64 + globalOffsetX, (64-10)/2 + moves[i][1]*64 + globalOffsetY, "path"); //horizonatl path
 	}
 }
 
