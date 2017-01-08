@@ -157,6 +157,12 @@ var units = [infantry, heavyInfantry, cavalry];
 //current attack function doesn't support long range (yet)
 //var units = [infantry, heavyInfantry, cavalry, archer];
 
+//sets zoom level
+var scale = 'scale(1)';
+document.body.style.webkitTransform =  scale;    // Chrome, Opera, Safari
+document.body.style.msTransform =   scale;       // IE 9
+document.body.style.transform = scale;   
+    
 function startGame() { //called when the game starts
 	frame = 0; 
 	turnNumber = 1;

@@ -4,7 +4,6 @@ fog of war implementation? //set as separate branch
 Potential screen at start just to explain basics of the game?
 
 Jake is working on:
-Loads with some squares not displayed, if you zoom out in browser and reload shows those squares
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
 Enemy units move in order they are in array, regardless of if there is a better one
@@ -26,4 +25,5 @@ Can't move onto town and not capture
 Victory Conditions?
 
 Resolved by most recent commit:
-When attacking adjacent enemies friendly units will move to another space where they can attack
+Loads with some squares not displayed, if you zoom out in browser and reload shows those squares
+^Not sure if fix is robust, need to test on other computers
