@@ -148,12 +148,12 @@ var dest;
 var enemyGold;
 
 //These objects store the stats for each unit, as well as the display images, and their cost to produce
-var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, image: "art/soldier.png", movedImage: "art/soldierMoved.png", enemyImage: "art/soldierEnemy.png", name: "Light Infantry", cost: 300};
-var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, image: "art/knight.png", movedImage: "art/knightMoved.png", enemyImage: "art/knightEnemy.png", name: "Heavy Infantry", cost: 600};
-var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, image: "art/cavalry.png", movedImage: "art/cavalryMoved.png", enemyImage: "art/cavalryEnemy.png", name: "Cavalry", cost: 1000};
-var archer = {attack: 4, defense: 1, movement: 3, sight: 3, name: "Archer"};
+var infantry = {attack: 3, defense: 3, movement: 3, sight: 3, range: 1, image: "art/soldier.png", movedImage: "art/soldierMoved.png", enemyImage: "art/soldierEnemy.png", name: "Light Infantry", cost: 300};
+var heavyInfantry = {attack: 4, defense: 5, movement: 2, sight: 2, range: 1, image: "art/knight.png", movedImage: "art/knightMoved.png", enemyImage: "art/knightEnemy.png", name: "Heavy Infantry", cost: 600};
+var cavalry = {attack: 5, defense: 2, movement: 4, sight: 4, range: 1, image: "art/cavalry.png", movedImage: "art/cavalryMoved.png", enemyImage: "art/cavalryEnemy.png", name: "Cavalry", cost: 1000};
+var archer = {attack: 4, defense: 1, movement: 3, sight: 3, range: 2, image: "art/archer.png", movedImage: "art/archer.png", enemyImage: "art/archer.png", name: "Archer", cost: 500};
 
-var units = [infantry, heavyInfantry, cavalry];
+var units = [infantry, heavyInfantry, cavalry,archer];
 //current attack function doesn't support long range (yet)
 //var units = [infantry, heavyInfantry, cavalry, archer];
 
@@ -198,7 +198,7 @@ function startGame() { //called when the game starts
 	
 	newPlayerUnit(2, 4, 1); //creates a new player unit at board space x,y of unit type u where the function reads newPlayerUnit(x,y,u)
 	newPlayerUnit(2, 2, 2);
-	newPlayerUnit(4, 4, 0);
+	newPlayerUnit(4, 4, 3);
 	newPlayerUnit(3, 3, 0);
 	
 	newEnemyUnit(10, 4, 1); //same as newPlayer unit but for enemies, may condense both into a single function "newUnit" later on
@@ -228,7 +228,7 @@ function startGame() { //called when the game starts
 	captureCard = new component(128, 320, "art/captureCard.png", boardX-spaceSize*2, boardY-spaceSize*5, "none", "none");
 	
 	//The factory card is a window that shows money, income, units that can be built, and stats about those units, these are the visual components that make up the card
-	factoryCard = new component(spaceSize*9, spaceSize*8, "art/factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
+	factoryCard = new component(spaceSize*9, spaceSize*10, "art/factoryCard.png", boardX-spaceSize*11, boardY-spaceSize*11, "none", "none");
 	goldText = new component("900 32px", "Courier New", "black", toPixel(3,0), toPixel(2,45), "text", "Gold: " + gold);
 	incomeText = new component("900 32px", "Courier New", "black", toPixel(7,0), toPixel(2,45), "text", income);
 	for (var i = 0; i < units.length; i++) {
@@ -339,6 +339,9 @@ function mapTerrain() { //edit this to edit terrain (aka place mountain, change 
 	board[7][5] = 8;
 	board[7][7] = 8;
 	board[6][6] = 7;
+    
+    board[5][4] = 3;
+    board[6][5] = 3;
 }
 
 function mapStructures() { //Fills structureMap[] to represent building locations
@@ -867,7 +870,7 @@ function highlightMoveable(x, y) {
 		}
 	}
 	
-	highlightAttackable(); //now highlight squares we can attack
+	highlightAttackable(x,y); //now highlight squares we can attack
 }
 
 function getMoveable(givenX,givenY, unit) {
@@ -917,40 +920,72 @@ function generateGrid() {
 	}
 }
 
-function highlightAttackable() {
-	getAttackable(); //create a 2D array representing the board, that contains info on what spaces can be attacked, and where the unit should move when attacking
+function highlightAttackable(x,y) {
+	getAttackable(x,y); //create a 2D array representing the board, that contains info on what spaces can be attacked, and where the unit should move when attacking
 	for (var i = 0; i < attackableSpaces.length; i++) { //for each space we can attack
 		attackHighlights[attackHighlights.length] = new component(spaceSize, spaceSize, "red", toPixel(attackableSpaces[i].x,globalOffsetX), toPixel(attackableSpaces[i].y,globalOffsetY), "square", "none"); //highlight it
 	}
 }
 
-function getAttackable() {
-	for (var i = 0; i < moveableSpaces.length; i++) { //for every space that we can move to
-		for (var k = 0; k < spaceOffset.length; k++){ //for each of the cardinal directions
-			currX = moveableSpaces[i].x + spaceOffset[k][0]; //set our current space to the space in that direction
-			currY = moveableSpaces[i].y + spaceOffset[k][1];
-			var found = false;
-			var currAtk;
-			if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space is on board
-			&& entityLayer[currX][currY] < -1 //and there's an enemy there
-			&& !(entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] > -1 //and our destination won't have a friendly unit (aka no unit stacking)
-				&& (entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] != selectedUnit))) { //make sure we don't count the moving unit as a friendly unit in the way
-				newAttackable = {destination: moveableSpaces[i], x: currX, y: currY}; //create a new attackable object (destination is the square moved to adjacent to the target being attacked)
-				for (var l = 0; l < attackableSpaces.length; l++) { //for each object in the array of all attackable spaces
-					currAtk = attackableSpaces[l]; //set that one to our current
-					if (currAtk.x == currX && currAtk.y == currY) {//if our current is at the same location as the new one
-						found = true; //remember that we found that space 
-						if (newAttackable.destination.movement > currAtk.destination.movement)  //if the new move cost is less than the current one
-							attackableSpaces[l] = newAttackable; //replace the current with the new
-					}
-				}
-				if (!found) {//if we didn't find that location anywhere in the array
-					attackableSpaces[attackableSpaces.length] = newAttackable; //add it
-				}
-			}
-		}
-	}
+function getAttackable(x,y) {
+    if (playerUnits[selectedUnit].stats.range == 1) {
+        for (var i = 0; i < moveableSpaces.length; i++) { //for every space that we can move to
+            for (var k = 0; k < spaceOffset.length; k++){ //for each of the cardinal directions
+                currX = moveableSpaces[i].x + spaceOffset[k][0]; //set our current space to the space in that direction
+                currY = moveableSpaces[i].y + spaceOffset[k][1];
+                var found = false;
+                var currAtk;
+                if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length //if the space is on board
+                && entityLayer[currX][currY] < -1 //and there's an enemy there
+                && !(entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] > -1 //and our destination won't have a friendly unit (aka no unit stacking)
+                && (entityLayer[moveableSpaces[i].x][moveableSpaces[i].y] != selectedUnit))) { //make sure we don't count the moving unit as a friendly unit in the way
+                    newAttackable = {destination: moveableSpaces[i], x: currX, y: currY}; //create a new attackable object (destination is the square moved to adjacent to the target being attacked)
+                    for (var l = 0; l < attackableSpaces.length; l++) { //for each object in the array of all attackable spaces
+                        currAtk = attackableSpaces[l]; //set that one to our current
+                        if (currAtk.x == currX && currAtk.y == currY) {//if our current is at the same location as the new one
+                            found = true; //remember that we found that space 
+                            if (newAttackable.destination.movement > currAtk.destination.movement)  //if the new move cost is less than the current one
+                                attackableSpaces[l] = newAttackable; //replace the current with the new
+                        }
+                    }
+                    if (!found) {//if we didn't find that location anywhere in the array
+                        attackableSpaces[attackableSpaces.length] = newAttackable; //add it
+                    }
+                }
+            }
+        }
+    }
+    else {
+        attackableSpaces = getRangedAttackable(x,y,selectedUnit);
+    }
 }
+
+function getRangedAttackable(givenX,givenY,unit) {
+    var startingSpace = {range:playerUnits[selectedUnit].stats.range,x: givenX, y: givenY} //starting point, the units location
+    var attackableSpaces = [startingSpace];
+    var validAttacks = [];
+    var rangedDestination = {movement:0, x:givenX, y:givenY};
+        
+    for (var i = 0; i < attackableSpaces.length; i++) { //run this loop until we get to the end of attackableSpaces (which grows during the loop)
+		if (attackableSpaces[i].range > 0) { //if there's range left
+			for (var k = 0; k < spaceOffset.length; k++){ //for each of the four cardinal directions
+				currX = attackableSpaces[i].x + spaceOffset[k][0]; //set current space to the one in that  direction
+				currY = attackableSpaces[i].y + spaceOffset[k][1];
+				if (currX >= 0 && currX < board.length && currY >= 0 && currY < board[0].length){ //if the space being checked is on the board
+					newAttackable = {range: attackableSpaces[i].range - 1, x: currX, y: currY}; //create a new space object representing this one (range is how much range the not yet used)
+					attackableSpaces[attackableSpaces.length] = newAttackable; //and add it to our list of moveable spaces
+                }
+            }
+        }
+    }
+    
+    for (var i = 0; i < attackableSpaces.length; i++) {
+        if(entityLayer[attackableSpaces[i].x][attackableSpaces[i].y] < -1)
+            validAttacks[validAttacks.length] = {destination:rangedDestination, x:attackableSpaces[i].x, y:attackableSpaces[i].y}
+    }    
+        
+    return validAttacks;
+} 
 
 function checkAttackable(givenX, givenY) {
 	for (var k = 0; k < spaceOffset.length; k++){ //for each of the four cardinal directions

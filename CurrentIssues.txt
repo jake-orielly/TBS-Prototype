@@ -4,6 +4,7 @@ fog of war implementation? //set as separate branch
 Potential screen at start just to explain basics of the game?
 
 Jake is working on:
+Archer can move then attack
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
 Enemy units move in order they are in array, regardless of if there is a better one
@@ -13,6 +14,7 @@ plan destination is stupid simple
 buildEnemyUnits broken af
 no win/loss
 unit moving off structure doesn't affect capture hp
+capture structures is kind of a mess
 
 
 Important Issues:
