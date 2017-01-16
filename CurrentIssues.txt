@@ -3,12 +3,15 @@ commenting for general usage
 fog of war implementation? //set as separate branch
 Potential screen at start just to explain basics of the game?
 
+
+Priority: 
+Not obvious what squares archer can shoot
+Enemy units can't attack
+
 Jake is working on:
-Archer can move then attack
 Commenting/Confusing ordering of variables, needs readability
 Enemy movement
 Enemy units move in order they are in array, regardless of if there is a better one
-Enemy units can't attack
 enemy units can move through friendly
 plan destination is stupid simple
 buildEnemyUnits broken af
